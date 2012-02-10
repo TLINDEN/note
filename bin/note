@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: note,v 1.27 2000/05/16 23:51:35 thomas Exp thomas $
+# $Id: note,v 1.29 2000/06/25 20:13:23 scip Exp scip $
 # 
 #
 # note - console notes management with database and encryption support.
@@ -59,7 +59,7 @@ my (
 	# commandline options
 	#
 	$opt_, $opt_i, $opt_r, $opt_e, $opt_d,
-	$opt_s, $opt_t, $opt_T, $opt_l, $opt_L,
+	$opt_s, $opt_t, $opt_T, $opt_l, $opt_L, $opt_c,
 	$opt_D, $opt_I, $opt_o, $opt_h, $opt_n, $opt_v, 
 
 	#
@@ -126,7 +126,7 @@ $TIME_COLOR   	= "black";
 $TOPIC_COLOR 	= "BLACK";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.0.6";
+$version 	= "1.0.7";
 if($TOPIC)
 {
     $CurDepth 	= 1; # the current depth inside the topic "directory" structure...
@@ -154,6 +154,7 @@ else
 	Getopt::Long::Configure( qw(no_ignore_case));
 	GetOptions (
 	"interactive|i!" => \$opt_i,	# no arg
+	"config|c=s"	 => \$opt_c,	# string,  required
 	"raw|r!"	 => \$opt_r,	# no arg
 	"edit|e=i"	 => \$opt_e,	# integer, required
 	"delete|d=s"	 => \$opt_d,	# integer, required
@@ -243,7 +244,15 @@ else
 		&usage;
 	}
 	else {
-		$has_nothing = 1;
+		if($opt_c && $mode eq "" && !$opt_n) {
+			$mode = "new";
+		}
+		elsif($opt_c && $mode eq "") {
+			$mode = ""; # huh?!
+		}
+		else {
+			$has_nothing = 1;
+		}
 	}
 	### determine generic options
         if($opt_n =~ /^[\d+\-?\,*]+$/) {
@@ -281,9 +290,15 @@ if($has_nothing && $mode eq "")
 
 
 # read the configfile.
+$CONF = $opt_c if($opt_c); # if given by commandline, use this.
 if(-e $CONF)
 {
 	&getconfig($CONF);
+}
+elsif($opt_c) {
+	# only wrong, if specified by commandline! else use default values!
+	print STDERR "Could not open \"$CONF\": file does not exist or permission denied!\n";
+	exit(1);
 }
 
 
@@ -1062,6 +1077,7 @@ Usage: 	note [ options ] [ number [,number...]]
 Options:
 -h	--help			displays this help screen
 -v	--version		displays the version number
+-c	--config <file>		use another config file than the default \~/.noterc
 -l	--list [<topic>]	lists all existing notes If no topic were specified,
 				it will display a list of all existing topics.
 -L	--longlist [<topic>]	the same as -l but prints also the timestamp
@@ -1560,6 +1576,13 @@ sub getconfig
 __END__
 #
 # $Log: note,v $
+# Revision 1.29  2000/06/25 20:13:23  scip
+# *** empty log message ***
+#
+# Revision 1.28  2000/06/25 19:51:51  scip
+# changed pattern matching of seraching(\@ ... \E)
+# added --config option
+#
 # Revision 1.27  2000/05/16 23:51:35  thomas
 # fixed many option-parsing related bugd!
 #

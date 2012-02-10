@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: binary.pm,v 1.5 2000/04/26 22:57:38 thomas Exp thomas $
+# $Id: binary.pm,v 1.6 2000/06/25 19:48:00 scip Exp scip $
 # Perl module for note
 # binary database backend. see docu: perldoc NOTEDB::binary
 #
@@ -25,7 +25,7 @@ BEGIN {
 my ($NOTEDB, $sizeof, $typedef,$version);
 my ($cipher);
 
-$version = "(NOTEDB::binary, 1.5)";
+$version = "(NOTEDB::binary, 1.6)";
 
 
 sub new
@@ -171,7 +171,7 @@ sub get_search
 		($num, $note, $date) = unpack($typedef, $buffer);
 		$n = ude($note);
                 $t = ude($date);
-                if($n =~ /$searchstring/i)
+                if($n =~ /\Q$searchstring\E/i)
                 {
 			$res{$num}->{'note'} = $n;
                 	$res{$num}->{'date'} = $t;

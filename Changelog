@@ -1,5 +1,11 @@
 ==================================================================================
 
+1.0.7:
+FIXED:		there was a bug in the search expression, use now \Q and \E.
+ADDED:		--config <file> allows one to use another config than the default.
+
+==================================================================================
+
 1.0.6:
 FIXED:		there were some odd bugs in commandline parsing, some options were unavailable.
 FIXED:		Forgot "PreferredEditor" config-option in the new config format.

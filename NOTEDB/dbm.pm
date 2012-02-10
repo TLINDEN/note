@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: dbm.pm,v 1.1 2000/05/14 00:55:28 thomas Exp thomas $
+# $Id: dbm.pm,v 1.2 2000/06/25 19:51:11 scip Exp scip $
 # Perl module for note
 # DBM database backend. see docu: perldoc NOTEDB::dbm
 #
@@ -107,7 +107,7 @@ sub get_search
 	my($num, $note, $date, %res);
 
 	foreach $num (sort {$a <=> $b} keys %date) {
-	  if (ude($note{$num}) =~ /$searchstring/i) {
+	  if (ude($note{$num}) =~ /\Q$searchstring\E/i) {
                 $res{$num}->{'note'} = ude($note{$num});
 		$res{$num}->{'date'} = ude($date{$num});
 	  }

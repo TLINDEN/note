@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: mysql.pm,v 1.4 2000/04/26 22:57:50 thomas Exp thomas $
+# $Id: mysql.pm,v 1.5 2000/06/25 19:50:43 scip Exp scip $
 # Perl module for note
 # mysql database backend. see docu: perldoc NOTEDB::binary
 #
@@ -161,7 +161,7 @@ sub get_search
 		foreach $num (sort { $a <=> $b } keys %res) {
 			$note = ude($res{$num}->{'note'}); 
                 	$date = ude($res{$num}->{'date'});
-			if($note =~ /$searchstring/i)
+			if($note =~ /\Q$searchstring\E/i)
                 	{
                         	$res{$num}->{'note'} = $note;
                         	$res{$num}->{'date'} = $date;
