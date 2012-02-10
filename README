@@ -1,4 +1,4 @@
-note 0.1 by Thomas Linden, 1999
+note note-0.3 by Thomas Linden, 01/2000
 
 
 Introduction
@@ -8,18 +8,16 @@ Introduction
 	perl, which allows you to manage notes similar
 	to programs like "knotes" from commandline.
 
+	This version is completely rewritten and it is
+	able to display colored output.
+
 	You can add, edit, list and delete as many notes
-	as you want. The notes are stored in a mysql
-	database. You might think, "what an overkill...",
-	but doing it this way provides some important
-	advantages:
-		o data integrity
-		o no need of another proprietary file format
-		o no new engine to maintain this file format
-		o speed
-		o portability
-		o availability
-		  ...
+	as you want. The notes are stored in a binary
+	database. Unlike previous versions of note this
+	version don't need a database server. All you need
+	is perl and this script (and, of course, some free
+	disk space for the file...).
+
 
 
 Requirements
@@ -27,51 +25,27 @@ Requirements
 
 	You need the following things:
 		o perl installed (5.004x)
-		o mysql database installed and running
-		o Mysql perlmodule (you can find it on 
-		  http://www.mysql.org) PLEASE NOTE:
-		  It needs the Module "Mysql". Newer versions
-		  are DBI, which you can also use to access
-		  mysql databases. If you want to use it, you
-		  have to rewrite the program. Please let me
-		  know, if you did it :-)
-		o permissions to create a new database and
-		  to write data to this database.
+		o The module IO::Seekable, which should be 
+		  already installed with your perl distributuion.
 
 
 
 Installation
 ============
 
-	First, make sure all these things above are ok.
-	You can use the script "install.sh" to create a new
-	database and the table structure. You might edit 
-	the script before running it.
-
-	If you getting trouble, i.e. if you have not the 
-	required permissions to do that, please make sure,
-	you can. 
-	As user root, you have to give your username the 
-	neccessary permissions. Please refer to the mysql 
-	documentation, how to do that.
-	After that repeat the step above.
-
-	As root, copy the perl-script "note" to /usr/bin.
-
-	This should be all.
+	Simple: Copy it to a place inside your $PATH, 
+	probably as root. (for example to /usr/bin).
 
 
 
 Configuration
 =============
 
-	If you created the database with install.sh, you 
-	do not need to do anything further. Simply run
-	"note" without any commandline parameters. It will
-	create a configfile ~/.noterc for you.
-	You might take a look to this file and change something,
-	if neccessary.
-
+	This version of note doesn't neccessarily need
+	a configuration file. But you can have one and change
+	some default values. Take a look to the file noterc
+	provided with this tarball. There are detailed instructions
+	about every available parameter.
 
 
 
@@ -82,7 +56,8 @@ Usage
 	It will tell you all available commandline options.
 
 	To create a new note, simply run "note". You can enter
-	the note (there is no limitation on length of the note).
+	the note (the length is by default limited to 1024 bytes,
+	which you can change from your config file).
 	End by typing a . on a line itself. note will tell you the 
 	number of the note.
 
@@ -98,7 +73,11 @@ Usage
 	will store the changed note to the database.
 
 	Of course you can drop a certain note: "note -d 1" deletes
-	note number 1.
+	note number 1. If a note in the middle or the beginning of
+	the database will be deleted, note will recount the other
+	existent notes. For example there are 3 notes, number 1, 2
+	and 3. If you delete number 2, then number 3 will become
+	number 2.
 
 	If you cannot remember, which note you are looking for, you
 	can use the search capability of note: "note -s <searchstring>".
@@ -106,6 +85,58 @@ Usage
 	an occurence of this string and tell you the number and first-
 	line it have.
 
+
+
+
+Format of the notedb
+====================
+
+	The database where the notes are stored is a binary file of
+	the following format:
+	It consists of three fixed length fields per entry. The fields
+	have the following types:
+		o Number: Integer (1 byte)
+		o Note:   String (default 1024 bytes)
+		o Time:   String (default 64 bytes)
+	You can change the sizes of the fields "Note" and "Time" in
+	the configfile "~/.noterc". If it does not exist, the above
+	defaults will be used.
+	If the data to be stored is smaller then the size of the field,
+	it will be filled with ZERO's ("\0"). The Note and the Time
+	fields will be uuencoded before storage. Of course, this is
+	no security, never mind...
+
+
+
+Security
+========
+
+	If you want to protect the notedb against unauthorized persons
+	(even root), you might want to use pgp. I use gpg (GNU privacy
+	guard), which is compatible to pgp, usage should be similar.
+	You could add a function to your .profile or .bashrc or whatever:
+	--- snip ---
+		function note
+		{
+			gpg -o ~/.notedb -d ~/.notedb.gpg
+			note $1 $2 $3
+			gpg -e ~/.notedb --yes -r username
+			rm -rf ~/.notedb
+		}
+	--- snip ---
+	You should replace <username> with your real username. After applying
+	this function to your .profile, issue the following command:
+		"source .profile"
+	You shell will reread the file, so you can try it out without the need
+	of new login.
+	This function assumes, there exists a file called "~/.notedb.gpg",
+	therefore you need to encrypt your notedb once before you can use this
+	funcion:
+		"gpg -e ~/.notedb --yes -r username"
+	
+	If you don't make use of encryption, I suggest you to chmod it:
+		"chmod 600 .notedb"
+	So, only you can read the file (and root or any intruder who became root).	
 
 
 
@@ -128,7 +159,7 @@ License
 Author
 ======
 
-	The author os Thomas Linden.
+	The author is Thomas Linden.
 
 
 
@@ -136,5 +167,4 @@ Author
 Last changed
 ============
 
-	07.11.1999
-	
+	09.01.2000	

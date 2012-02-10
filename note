@@ -1,346 +1,379 @@
 #!/usr/bin/perl
-# this is the small console program "note"
+#
+# this is the small console program "note" version 0.3
 # It works similar to some well known GUI note programs,
 # but instead of using X11 it uses the UN*X console.
 # You can edit existing notes, delete them, create new
 # ones and, of course display them.
-# The notes will be stored in a mysql database. Refer to
-# the README of the desitribution for details about 
-# installation.
-# It requires a configfile named .noterc in the users home.
-# If it does not exist, note will create one for you, which
-# you will have to edit.
+# The notes will be stored in a binary data file (~/.notedb)
+#
+# Previous versions needed a mysql database. This is no more
+# the case.
+# If there exists a configfile called ~/.noterc then it will
+# be processed. You can overwrite some default values of note.
 #
 # If you find it usefull or find a bug, please let me know:
 # Thomas Linden <tom@daemon.de>
-#
-# note is GPL software.
 
 
-use Mysql;
-
-##################################
+#################################################
 # define some default values.
-# don't change them, instead use the config file!
+# You can change them, but be carefull!
+# Instead you can define each of them in a configfile
+# called ~/.noterc.
+$MAX_NOTE = 1024;
+$MAX_TIME = 64;
 
-$version = "0.1";
-$date = `date +%e\".\"%m\".\"%Y\" \"%T`;
-chomp $date;
-
-$USER = getlogin || getpwuid($<);
-chomp $USER;
+$maxlen = 30;
 
 $HOME = `echo \$HOME`;
 chomp $HOME;
 
 $CONF = $HOME . "/.noterc";
 
-$DEFAULTDBNAME = $USER . "_note";
-$dbhost = "";
-$dbuser = "";
-$dbpasswd = "";
-$dbname = "";
-$dbname = "";
-$searchstring = "";
-###################################
+$NOTEDB = $HOME . "/.notedb";
+
+$COLOR = "NO";
+# if $COLOR equals NO, then the following color-definitions
+# will be replaced by "".
+$BORDER_COLOR = "BLACK";
+$NUM_COLOR    = "blue";
+$NOTE_COLOR   = "magenta";
+$TIME_COLOR   = "black";
+#################################################
 
 
 sub usage;
 sub find_editor;
+sub output;
+sub C;
+sub uen;
+sub ude;
+
+use IO::Seekable;
+
+$version = "0.3 (binary database)";
 
 # process command line args
 if($ARGV[0] eq "")
 {
-	$mode = "new";
+        $mode = "new";
 }
 else
 {
   while($ARGV[0] ne "" )
   {
-	if($ARGV[0] =~ /\d+/)
-	{
-		# first arg is a digit!
-		$number = $ARGV[0];
-		if($mode eq "")
-		{
-			# change mode only, if started with an option 
-			# ($mode will be already set)
-			$mode = "display";
-		}
-		$ARGV[0] = "";
-	}
-	elsif($ARGV[0] eq "-l")
-	{
-		$mode = "list";
-		$ARGV[0] = "";
-	}
-	elsif($ARGV[0] eq "-s")
-	{
-		# searching
-		$mode = "search";
-		$searchstring = $ARGV[1];
-		$ARGV[0] = "";
-	}
-	elsif($ARGV[0] eq "-e")
-	{
-		if($mode eq "edit")
-		{
-			# note -e -e !
-			&usage;
-			exit(1);
-		}
-		else
-		{
-			$mode = "edit";
-			shift;
-		}
-	}
-	elsif($ARGV[0] eq "-d")
-	{
-		if($mode eq "delete")
-		{
-			&usage;
-			exit(1);
-		}
-		else
-		{
-			$mode = "delete";
-			shift;
-		}
-	}
-	elsif($ARGV[0] eq "-v" || $ARGV[0] eq "--version")
-	{
-		print "note $version\nfrom Thomas Linden <tom\@daemon.de>\n";
-		exit(0);
-	}
-	elsif($ARGV[0] eq "-h" || $ARGV[0] eq "--help")
-	{
-		&usage;
-		exit(0);
-	}
-	else
-	{
-		&usage;
+        if($ARGV[0] =~ /\d+/)
+        {
+                # first arg is a digit!
+                $number = $ARGV[0];
+                if($mode eq "")
+                {
+                        # change mode only, if started with an option 
+                        # ($mode will be already set)
+                        $mode = "display";
+                }
+                $ARGV[0] = "";
+        }
+        elsif($ARGV[0] eq "-l")
+        {
+                $mode = "list";
+                $ARGV[0] = "";
+        }
+        elsif($ARGV[0] eq "-s")
+        {
+                # searching
+                $mode = "search";
+                $searchstring = $ARGV[1];
+                $ARGV[0] = "";
+        }
+        elsif($ARGV[0] eq "-e")
+        {
+                if($mode eq "edit")
+                {
+                        # note -e -e !
+                        &usage;
+                        exit(1);
+                }
+                else
+                {
+                        $mode = "edit";
+                        shift;
+                }
+        }
+        elsif($ARGV[0] eq "-d")
+        {
+                if($mode eq "delete")
+                {
+                        &usage;
+                        exit(1);
+                }
+                else
+                {
+                        $mode = "delete";
+                        shift;
+                }
+        }
+        elsif($ARGV[0] eq "-v" || $ARGV[0] eq "--version")
+        {
+                print "This is note $version from Thomas Linden <tom\@daemon.de>.\n";
+                exit(0);
+        }
+        elsif($ARGV[0] eq "-h" || $ARGV[0] eq "--help")
+        {
+                &usage;
+                exit(0);
+        }
+        else
+        {
+                &usage;
         exit(0);
-	}
+        }
   }
 }
 
-# Now we have the following variables set:
-# $mode (delete | new | edit | list)
-# $number ("", -l was given)
-
-
-# open the configfile.
-
-
-
+###################### CONFIG ~/.noterc exists? #########################
+# If not, use the predefined Values!
 if(-e $CONF)
 {
-	eval `cat $CONF`;
+        eval `cat $CONF`;
 }
-else
+
+
+###################### db exists? #######################################
+# if not, create it!
+if(! -e $NOTEDB)
 {
-	# no config, create one and inform the user.
-	open FILE, ">$CONF" or die "Could not create $CONF!\n";
-	select FILE;
-	print qq~\#config for note $version
-\#automaticallly created by note, $date.
-\#please refer to the man page for more informations!
-
-\#the database to be used
-\$dbname = "$DEFAULTDBNAME";
-
-\#the database host
-\$dbhost = "localhost";
-
-\#the user to connect
-\$dbuser = $USER;
-
-\#the password to be used
-\$dbpasswd = "";
-
-\# db descriptors... 
-\$table  = "note";
-\$fnum   = "number";
-\$ffirst = "firstline";
-\$fnote  = "note";
-\$fdate  = "date";
-~;
-	close FILE;
-	select STDOUT;
-	print "$CONF has been created for you. Please don't forget to edit it!\n";
-	exit(0);
+	open(TT,">$NOTEDB") or die "Could not create $NOTEDB: $!\n";
+	close (TT);
+}
+elsif(! -w $NOTEDB)
+{
+	print "$NOTEDB is not writable!\n";
+	exit(1);
 }
 
-# ok, if still here, we got it all, now let's connect to the database
-$db = Mysql->connect($dbhost,$dbname,$dbuser,$dbpasswd)
-	or die "ERROR: $Mysql::dberrstr\n";
 
+# calculate some constants...
+$BORDERC  = "<$BORDER_COLOR>";
+$_BORDERC = "</$BORDER_COLOR>";
+$NUMC     = "<$NUM_COLOR>";
+$_NUMC    = "</$NUM_COLOR>";
+$NOTEC    = "<$NOTE_COLOR>";
+$_NOTEC   = "</$NOTE_COLOR>";
+$TIMEC    = "<$TIME_COLOR>";
+$_TIMEC   = "</$TIME_COLOR>";
 
-# start processing
+$time = `date +%d\".\"%m\".\"%Y\" \"%T`;
+chomp $time;
+
+$typedef = "i a$MAX_NOTE a$MAX_TIME";
+$sizeof  = length pack($typedef, () );
+
+############################### DISPLAY ##################################
 if($mode eq "display")
 {
-	# display a certain note
-	print "\ndisplaying note number $number:\n";
-	$res = $db->query("SELECT $ffirst,$fnote,$fdate FROM $table WHERE $fnum = $number")
-		or die "ERROR: $Mysql::dberrstr\n";
-	while(@row = $res->fetchrow)
-	{
-		print "$row[0]\n$row[1]\n\nlast changed: $row[2]\n\n";
-		$match = "yes";
-	}
-	if($match eq "")
-	{
-		print "\nno note with that number found!\n\n";
-	}
+	$address = ($number -1 ) * $sizeof;
+	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
+	print "displaying note number $number:\n\n";
+	seek(NOTE, $address, SEEK_SET);
+	read(NOTE, $buffer, $sizeof);
+	($num, $note, $time) = unpack($typedef, $buffer);
+	$n = ude($note);
+	$t = ude($time);	
+
+	output($num, $n, $t, "SINGLE");
+	print "\n";
+	close(NOTE);
 }
+############################### SEARCH ##################################
 elsif($mode eq "search")
 {
 	if($searchstring eq "")
+        {
+                &usage;
+                exit(1);
+        }
+	print "searching the database $NOTEDB for \"$searchstring\"...\n";
+	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
+        seek(NOTE, 0, 0); # START FROM BEGINNING
+        while(read(NOTE, $buffer, $sizeof))
+        {
+                ($num, $note, $time) = unpack($typedef, $buffer);
+                $n = ude($note);
+                $t = ude($time);
+		if($n =~ /$searchstring/i)
+                {
+			output($num, $n, $t);
+			$match = 1;
+		}
+        }
+	if(!$match)
 	{
-		&usage;
-		exit(1);
+		print "no matching note found!\n";
 	}
-	print "\nsearching the database $dbname for \"$searchstring\"...\n\n";
-	$sqlstatement = "SELECT DISTINCT $fnum,$ffirst,$fdate FROM $table WHERE "
-	. "$ffirst LIKE '%$searchstring%' OR $fnote LIKE '%$searchstring%'"
-	. " ORDER BY $fnum";
-
-	$res = $db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
-	while(@row = $res->fetchrow)
-	{
-		print "[ $row[0]\t\"$row[1]\"\t$row[2] ]\n";
-		$match = "yes";
-    }
-    if($match eq "")
-    {
-        print "\nno matching note found!\n\n";
-        exit(0);
-    }	
-	print "\n";
+        close(NOTE);
+        print "\n";
 }
+############################### LIST ##################################
 elsif($mode eq "list")
 {
-	print "\nlisting all existing notes:\n";
-	# list all available notes (number and firstline)
-	$res = $db->query("SELECT $fnum,$ffirst,$fdate FROM $table ORDER BY $fnum") 
-		or die "ERROR: $Mysql::dberrstr\n";
-	while(@row = $res->fetchrow)
-	{
-		print "[ $row[0]\t\"$row[1]\"\t$row[2] ]\n";
-	}
+	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
+        seek(NOTE, 0, 0); # START FROM BEGINNING
+	print "listing all existing notes:\n\n";
+        while(read(NOTE, $buffer, $sizeof))
+        {
+                ($num, $note, $time) = unpack($typedef, $buffer);
+                $n = ude($note);
+                $t = ude($time);
+                #print "#$num:\t$t\n---\n$n\n\n";
+		output($num, $n, $t);
+        }
+        close(NOTE);
 	print "\n";
 }
+############################### NEW ##################################
 elsif($mode eq "new")
 {
+	local $note = "";
+	local $line = "";
+	#local $num = 0;
 	# create a new note
-	print "\nenter the text of the note, end with .\n";
-	while($linenum != 1)
-	{
-		$line = <STDIN>;
-		$firstline = $line;
-		$linenum = 1;
-	}
+        print "\nenter the text of the note, end with .\n";
 	do
-	{
-		$line = <STDIN>;
-		$note = $note . $line;
-	} until $line eq ".\n";
+        {
+                $line = <STDIN>;
+                $note = $note . $line;
+        } until $line eq ".\n";
 	# remove the . !
-	chop $note;
-	chop $note;
-	chomp $firstline;
-	#print "1: $firstline\n2: $note\n";
+        chop $note;
+        chop $note;
 
+	open (N, "<$NOTEDB") or die "could not open .notedb\n";
 	# since we have not number, look for the next available:
-	$res = $db->query("SELECT max($fnum) FROM $table") or die "ERROR: $Mysql::dberrstr\n";
-	while(@row = $res->fetchrow)
-	{
-		$number = $row[0];
-	}
-	$number++;
-	$sqlstatement = "INSERT INTO $table VALUES (0,$number,'$firstline','$note','$date')";
+	seek(N, 0, 0); # START FROM BEGINNING	
+	while(read(N, $buff, $sizeof))
+        {
+                ($num, $te, $me) = unpack($typedef, $buff);
+        }
+	seek(N, 0, 0);
+	close (N);
+	$num++; # use the highest plus 1
+	
+	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
+	seek(NOTE, 0, SEEK_END); # APPEND
+	local $n = uen($note);
+	local $t = uen($time);
+	$buffer = pack($typedef, $num, $n, $t);
 
-	$db->query($sqlstatement) 
-		    or die "ERROR: $Mysql::dberrstr\n";
-
-	# everything ok until here!
-	print "note stored. it has been assigned the number $number.\n\n";
+	print NOTE $buffer;
+	close(NOTE);
 }
+############################### DELETE ##################################
 elsif($mode eq "delete")
 {
-	# delete a note
-	$sqlstatement = "DELETE FROM $table WHERE $fnum = $number";
-	$res = $db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
-	print "\nnote number $number has been deleted.\n\n";
-}
-elsif($mode eq "edit")
-{
-	# edit a note
-	$sqlstatement = "SELECT $ffirst,$fnote FROM $table WHERE $fnum = $number";
-	$res = $db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
-	while(@row = $res->fetchrow)
+	# $number is the one we want to delete!
+	$TEMP = "/tmp/note.$$"; # save temporarily in $TEMP
+	system("/bin/touch", $TEMP);
+	open TEMP, "+<$TEMP" or die "Could not open $TEMP($!)\n";
+	open (NOTE, "<$NOTEDB") or die "could not open .notedb\n";
+
+	seek(TEMP, 0, SEEK_END); # APPEND
+
+	$count = 1;
+
+	# read from notedb and write to temp (without number to
+	# be deleted, and with recounted numbers)
+	while(read(NOTE, $buff, $sizeof))
 	{
-		$firstline = $row[0];
-		$note = $row[1];
-		$match = "yes";
-	}
-	if($match eq "")
-    {
-        print "\nno note with that number found!\n\n";
-		exit(0);
-    }	
-	$TEMP = "/tmp/note.$USER.$$";
-	open NOTE,">$TEMP" or die "Could not open $TEMP\n";
-	select NOTE;
-	print $firstline . "\n";
-	print $note . "\n";
-	close NOTE;
-	select STDOUT;
-	$editor = &find_editor;
-	if($editor)
-	{
-		system $editor, $TEMP;
-	}
-	else
-	{
-		print "Could not find an editor to use!\n";
-		exit(0);
-	}
-	$note = "";
-	open NOTE,"<$TEMP" or die "Could not open $TEMP\n";
-	$c = 0;
-	while(<NOTE>)
-	{
-		if($c == 0)
+		($num, $note, $time) = unpack($typedef, $buff);
+		if($num != $number)
 		{
-			$firstline = $_;
-			chomp $firstline;
+			# no keep it
+			$buffer = pack($typedef, $count, $note, $time);
+			seek(TEMP, 0, SEEK_END); # APPEND
+			print TEMP $buffer;
+			$count++;
 		}
 		else
 		{
-			$note = $note . $_;
+			# drop it, just ignore the contents.
+			$droped = 1;
 		}
-		$c++;
+	}
+	close(TEMP);
+	close(NOTE);
+	
+	# done, inform the user
+	if($droped eq 1)
+	{
+		# copy the new one over the old one
+		system("/bin/cp",$TEMP, $NOTEDB);
+		print "note number $number has been deleted.\n";
+	}
+	else
+	{
+		print "no note with that number found!\n";
+	}
+	system "/bin/rm -f $TEMP";
+}
+############################### EDIT ##################################
+elsif($mode eq "edit")
+{
+	$address = ($number -1 ) * $sizeof;
+        open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
+        seek(NOTE, $address, SEEK_SET);
+	read(NOTE, $buff, $sizeof) or die "no note with that number found!\n";
+	($num, $note, $t) = unpack($typedef, $buff);
+        $n = ude($note);
+	# got current enties...
+	
+	# now edit them
+	$TEMP = "/tmp/note.$$";
+	open N, ">$TEMP" or die "Could not open $TEMP\n";
+	select N;
+	print $n; # save decoded to $TEMP
+	close N;
+	select STDOUT;
+
+	# let the user edit it...
+	$editor = &find_editor;
+        if($editor)
+        {
+                system $editor, $TEMP;
+        }
+        else
+        {
+                print "Could not find an editor to use!\n";
+                exit(0);
+        }
+
+	# read it in ($note)
+	$note = "";
+	open N, "<$TEMP" or die "Could not open $TEMP\n";
+	$c = 0;
+	while(<N>)
+	{
+		$note = $note . $_;
 	}
 	chomp $note;
-	close NOTE;
+	close N;
 
+	# privacy!
 	system "/bin/rm -f $TEMP";
-	
-	# we got it, now save to db
-	$sqlstatement = "UPDATE $table SET "
-	. "$ffirst = '$firstline', "
-	. "$fnote = '$note' "
-	. "WHERE $fnum = $number";
-	$db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
 
-	print "\nnote number $number has been changed.\n\n";
+	# we got it, now save to db
+	seek(NOTE, $address, SEEK_SET);
+	$n = "";
+	$n = uen($note);
+	local $t = uen($time);
+	$buffer = pack($typedef, $number, $n, $t);
+        print NOTE $buffer;
+	close(NOTE);
 }
 else
 {
-	#undefined :-(
+        #undefined :-(
 }
 
 
@@ -350,18 +383,148 @@ exit(0);
 sub usage
 {
         print "\nusage: \nnote [-l | -h | -v] | [-s <searchstring>] | [-e | -d <number>] | [<number>]\n";
-		print "Options: -l	lists all existing notes\n";
-		print "         -h	displays this help screen\n";
-		print "         -v	displays the version number\n";
-		print "         -s	searches trough the notes database\n";
-		print "         -e <n>	edit note number <n>\n";
-		print "         -d <n>	delete note number <n>\n";
-		print "If you specify only a number (i.e.\"note 4\"), then this note will be\n";
-		print "displayed. If you run note without any parameter, it will create a\n";
-		print "new note and store it.\n\n";
+                print "Options: -l      lists all existing notes\n";
+                print "         -h      displays this help screen\n";
+                print "         -v      displays the version number\n";
+                print "         -s      searches trough the notes database\n";
+                print "         -e <n>  edit note number <n>\n";
+                print "         -d <n>  delete note number <n>\n";
+                print "If you specify only a number (i.e.\"note 4\"), then this note will be\n";
+                print "displayed. If you run note without any parameter, it will create a\n";
+                print "new note and store it.\n\n";
 
         exit 1;
 }
 sub find_editor {
    return $ENV{"VISUAL"} || $ENV{"EDITOR"} || "vim" || "vi" || "pico";
+}
+
+sub output
+{
+	# 0 = Num, 1 = Note, 2 = Time
+	local $S = "-" x ($maxlen + 31);
+	local $LINE = "$BORDERC $S $_BORDERC\n";
+	local $num   = $_[0];
+	local $note  = $_[1];
+	local $time  = $_[2];
+	local $TYPE  = $_[3];
+	local $L = $BORDERC . "[" . $_BORDERC;
+        local $R = $BORDERC . "]" . $_BORDERC;
+	if($TYPE ne "SINGLE")
+	{
+		if(!$SetTitle) 
+		{
+			# print only of it is the first line!
+			local $SP = " " x ($maxlen-2);
+                	print C $LINE;
+			print C "$L $NUMC#$_NUMC   $TIMEC" . "creation date$_TIMEC           " . $NOTEC . "note$_NOTEC$SP$R\n";
+                	print C $LINE;
+			$SetTitle = 1;
+		}
+		local $title = "";
+		$CUTSPACE = " " x $maxlen;
+		$note =~ s/\n/$CUTSPACE/g;
+        	local $len   = length($note);
+        	if($len < $maxlen-3)
+        	{
+        	    local $diff = $maxlen - $len;
+		    local $Space = " " x $diff;	
+        	    $title = $BORDERC . $NOTEC . "\"" . $note . "\"" . $_NOTEC . $Space . "$_BORDERC";
+        	}
+		else
+        	{
+        	        $title = substr($note,0,$maxlen - 3);
+        	        $title = $BORDERC . $NOTEC . "\"" . $title . "...\"$_NOTEC$_BORDERC";
+        	}
+		# $title should now look as: "A sample note                       "
+        	print C "$L $NUMC$num$_NUMC $R$L$TIMEC" . $time . "$_TIMEC $R$L $NOTEC" . $title . "$_NOTEC $R\n";
+		print C $LINE;
+	}
+	else
+	{
+		local $Space = " " x ($maxlen+6);
+		local $SP = " " x ($maxlen +13);
+		print C $LINE;
+		print C "$L $NUMC#$_NUMC   " . $TIMEC . "creation date$_TIMEC$SP$R\n";
+		print C $LINE;
+		print C "$L $NUMC$num$_NUMC $R$L$TIMEC$time$_TIMEC $Space$R\n";
+		print C $LINE;
+		print C $NOTEC . $note . $_NOTEC . "\n";
+		print C $LINE;
+	}
+}
+
+
+
+sub C
+{
+        # \033[1m%30s\033[0m    
+        local %Color = (        'black'         => '0;30',
+                                'red'           => '0;31',
+                                'green'         => '0;32',
+                                'yellow'        => '0;33',
+                                'blue'          => '0;34',
+                                'magenta'       => '0;35',
+                                'cyan'          => '0;36',
+                                'white'         => '0;37',
+				'B'		=> '1;30',
+                                'BLACK'         => '1;30',
+                                'RED'           => '1;31',
+                                'GREEN'         => '1;32',
+                                'YELLOW'        => '1;33',
+                                'BLUE'          => '1;34',
+                                'MAGENTA'       => '1;35',
+                                'CYAN'          => '1;36',
+                                'WHITE'         => '1;37',
+                                'black_'        => '4;30',
+                                'red_'          => '4;31',
+                                'green_'        => '4;32',
+                                'yellow_'       => '4;33',
+                                'blue_'         => '4;34',
+                                'magenta_'      => '4;35',
+                                'cyan_'         => '4;36',
+                                'white_'        => '4;37',
+                                'blackI'        => '7;30',
+                                'redI'          => '7;31',
+                                'greenI'        => '7;32',
+                                'yellowI'       => '7;33',
+                                'blueI'         => '7;34',
+                                'magentaI'      => '7;35',
+                                'cyanI'         => '7;36',
+                                'whiteI'        => '7;37'
+                        ); 
+        $default = "\033[0m";
+        $S = $_[0];
+        foreach $Col (%Color)
+        {
+                if ($S =~ /<$Col>/g)
+                {
+			if($COLOR ne "NO")
+			{
+                        	$NC = "\033[" . $Color{$Col} . "m";     
+                        	$S =~ s/<$Col>/$NC/g;
+                        	$S =~ s/<\/$Col>/$default/g;
+                	}
+			else
+			{
+				$S =~ s/<$Col>//g;
+                                $S =~ s/<\/$Col>//g;
+			}
+		}
+        }
+        return $S;
+}
+
+
+sub uen
+{
+	local $T = pack("u", $_[0]);
+	chomp $T;
+	return $T;
+}
+
+sub ude
+{
+        local $T = unpack("u", $_[0]);
+        return $T;
 }

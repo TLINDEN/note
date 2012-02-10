@@ -1,3 +1,10 @@
+0.3:
+CHANGED:	it uses no more a mysql database, but a binary file instead.
+			This is much faster!
+ADDED:		note can display the notes with colors, it is turned off by default
+
+
+
 0.2:
 FIXED:		now any occurence of ' will be masked with \' before storage
 			to the mysql database.

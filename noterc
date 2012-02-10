@@ -1,0 +1,71 @@
+# 0.3 (binary database)
+# This is a sample config for the note script
+# You do not need it, if you keep the values
+# here unchanged.
+#
+# Copy it to your $HOME as .noterc
+# 
+# IMPORTANT:
+# If you previously used note 0.1 or 0.2 then
+# you will already have such a file. This file
+# is not compatible with the one for note 0.3!
+# You have to delete it and to create a new one.
+# 
+# There is no more a mysql database needed. If
+# want to stay with your note-mysql-database, 
+# use note 0.2.
+#
+# This config has to be valid perl code. Therefore
+# please be carefull!
+#
+# You can contact me per email: <tom@daemon.de>
+# 
+# Thomas Linden, 01/2000
+
+
+
+# Define the maximum bytes a note can have in a
+# note-entry.
+$MAX_NOTE = 1024;
+
+
+# Define the maximum bytes a timestamp can have
+# in a note-entry.
+$MAX_TIME = 64;
+
+
+# The maximum width for displaying a note.
+$maxlen = 30;
+
+
+# Your home, better do not change it!
+$HOME = `echo \$HOME`;
+chomp $HOME;
+
+
+# The location of the note-database. If it does
+# not exist, it will be created.
+$NOTEDB = $HOME . "/.notedb";
+
+
+# if $COLOR equals NO, then everything will be
+# displayed with your default colors (mostly black)
+$COLOR = "NO";
+
+
+# Color-definitions of the various fields. Will be
+# ignored if $COLOR = "NO".
+$BORDER_COLOR = "BLACK";	# Borders
+$NUM_COLOR    = "blue";		# Note number
+$NOTE_COLOR   = "magenta";	# The note itself
+$TIME_COLOR   = "black";	# The time
+
+# The following colors are available:
+# black, red, green, yellow, blue, magenta, cyan and white.
+# It will be bold if it is uppercase.
+# You can append an underscore, if you like it underscored,
+# ie: blue_
+# Or, you can append an "I", if you like it inverted
+
+# keep this "1;" please!
+1;
