@@ -121,7 +121,7 @@ $TIME_COLOR   = "black";
 $TOPIC_COLOR = "BLACK";
 $TOPIC = 1;
 $TopicSep = '/';
-$version = "1.0.0";
+$version = "1.0.1";
 if($TOPIC)
 {
     $CurDepth = 1; # the current depth inside the topic "directory" structure...

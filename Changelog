@@ -1,5 +1,11 @@
 ==================================================================================
 
+1.0.1:
+FIXED:		fixed bug in NOTEDB::mysql, which caused note t store NULL values
+		in db, if encryption was off. A really dump failure :-(
+
+==================================================================================
+
 1.0.0:
 CHANGED:	removed install.sh. use now a Makefile for installation.
 ADDED:		Encryption support. Note can now encrypt notes using IDEA

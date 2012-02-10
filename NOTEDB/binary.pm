@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: binary.pm,v 1.4 2000/04/17 17:39:27 thomas Exp thomas $
+# $Id: binary.pm,v 1.5 2000/04/26 22:57:38 thomas Exp thomas $
 # Perl module for note
 # binary database backend. see docu: perldoc NOTEDB::binary
 #
@@ -25,7 +25,7 @@ BEGIN {
 my ($NOTEDB, $sizeof, $typedef,$version);
 my ($cipher);
 
-$version = "(NOTEDB::binary, 1.4)";
+$version = "(NOTEDB::binary, 1.5)";
 
 
 sub new
@@ -347,6 +347,13 @@ NOTEDB::binary - module lib for accessing a notedb from perl
 
 	# delete a certain note
 	$db->set_del(5);
+
+        # turn on encryption. CryptMethod must be IDEA, DES or BLOWFISH
+        $db->use_crypt("passphrase", "CryptMethod");
+
+        # turn off encryption. This is the default.
+        $db->no_crypt();
+
 
 =head1 DESCRIPTION
 

@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: mysql.pm,v 1.3 2000/04/17 17:39:37 thomas Exp thomas $
+# $Id: mysql.pm,v 1.4 2000/04/26 22:57:50 thomas Exp thomas $
 # Perl module for note
 # mysql database backend. see docu: perldoc NOTEDB::binary
 #
@@ -28,7 +28,7 @@ $table = "note";
 $fnum = "number";
 $fnote = "note";
 $fdate = "date";
-$version = "(NOTEDB::mysql, 1.3)";
+$version = "(NOTEDB::mysql, 1.4)";
 
 # prepare some std statements... #####################################################################
 my $sql_getsingle	= "SELECT $fnote,$fdate FROM $table WHERE $fnum = ?";
@@ -243,8 +243,11 @@ sub uen
         if($NOTEDB::crypt_supported == 1) {
                 eval {
                         $T = pack("u", $cipher->encrypt($_[0]));
-                }
+                };
         }
+	else {
+		$T = $_[0];
+	}
         chomp $T;
         return $T;
 }
@@ -255,9 +258,12 @@ sub ude
         if($NOTEDB::crypt_supported == 1) {
                 eval {
                         $T = $cipher->decrypt(unpack("u",$_[0]))
-                }
-        }
-        return $T;
+                };
+        	return $T;
+	}
+	else {
+		return $_[0];
+	}
 }
 
 1; # keep this!
@@ -302,6 +308,12 @@ NOTEDB::mysql - module lib for accessing a notedb from perl
 
 	# delete a certain note
 	$db->set_del(5);
+
+	# turn on encryption. CryptMethod must be IDEA, DES or BLOWFISH
+	$db->use_crypt("passphrase", "CryptMethod");
+
+	# turn off encryption. This is the default.
+	$db->no_crypt();
 
 =head1 DESCRIPTION
 
