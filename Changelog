@@ -1,5 +1,12 @@
 ==================================================================================
 
+1.0.0:
+CHANGED:	removed install.sh. use now a Makefile for installation.
+ADDED:		Encryption support. Note can now encrypt notes using IDEA
+		or DES as encryption-protocols(symetric).
+
+==================================================================================
+
 0.9:
 FIXED:		There were many new bugs after my last changes *grrrrr*. fixed.
 		Works now properly, with both backends!

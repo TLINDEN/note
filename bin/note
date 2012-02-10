@@ -63,9 +63,6 @@
 #
 # note is GPL software.
 
-#use Term::ReadLine;
-#use POSIX qw(:sys_wait_h);
-
 use strict;
 use Data::Dumper;
 
@@ -96,7 +93,8 @@ my (
         $_TIMEC, $TOPICC, $TOPIC_COLOR, $_TOPICC, $SetTitle, $COLOR,
         $typedef, $MAX_NOTE, $MAX_TIME, @NumBlock, $ALWAYS_EDIT, $HOME,
 	$db, $dbname, $dbhost, $DEFAULTDBNAME, $dbuser, $USER, $dbpasswd,
-	$table, $fnum, $fnote, $fdate, $date, $dbdriver, $libpath, $db
+	$table, $fnum, $fnote, $fdate, $date, $dbdriver, $libpath, $db,
+	$USE_CRYPT, $CRYPT_METHOD, $key
    );
 
 ####################################################################
@@ -114,7 +112,7 @@ $dbdriver = "binary";
 $libpath = "/usr/local/lib";
 $NOTEDB = $HOME . "/.notedb";
 $MAX_NOTE = 4096;
-$MAX_TIME = 24;
+$MAX_TIME = 64;
 $COLOR = "YES";
 $BORDER_COLOR = "BLACK";
 $NUM_COLOR    = "blue";
@@ -123,11 +121,12 @@ $TIME_COLOR   = "black";
 $TOPIC_COLOR = "BLACK";
 $TOPIC = 1;
 $TopicSep = '/';
-$version = "0.9 r1.15";
+$version = "1.0.0";
 if($TOPIC)
 {
     $CurDepth = 1; # the current depth inside the topic "directory" structure...
 }
+$USE_CRYPT = "NO";
 ####################################################################
 
 # process command line args
@@ -309,7 +308,41 @@ if($ListType ne "LONG" && $mode ne "interactive")
 }
 
 
-
+# check if the user wants to use encryption:
+if($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
+	if($CRYPT_METHOD eq "") {
+		$CRYPT_METHOD = "Crypt::IDEA";
+	}
+	print "password: ";
+	eval {
+	    local($|) = 1;
+	    local(*TTY);
+	    open(TTY,"/dev/tty");
+	    system ("stty -echo </dev/tty");
+	    chomp($key = <TTY>);
+	    print STDERR "\r\n";
+	    system ("stty echo </dev/tty");
+	    close(TTY);
+	};
+	if($@) {
+		$key = <>;
+	}
+	chomp $key;
+	$db->use_crypt($key,$CRYPT_METHOD);
+	undef $key;
+	# verify correctness of passwd
+	my ($note, $date) = $db->get_single(1);	
+	if($date ne "") {
+		if($date !~ /^\d+\.\d+?/) {
+			print "access denied.\n";
+			exit(1);
+		}
+	} #else empty!
+}
+else {
+	$db->no_crypt;
+	# does: NOTEDB::crypt_supported = 0;
+}
 
 # main loop: ###############
 if($mode eq "display")

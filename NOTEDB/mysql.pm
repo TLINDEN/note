@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: mysql.pm,v 1.2 2000/03/20 00:36:55 thomas Exp thomas $
+# $Id: mysql.pm,v 1.3 2000/04/17 17:39:37 thomas Exp thomas $
 # Perl module for note
 # mysql database backend. see docu: perldoc NOTEDB::binary
 #
@@ -10,13 +10,25 @@ use Data::Dumper;
 
 package NOTEDB;
 
+BEGIN {
+        # make sure, it works, although encryption
+        # not supported on this system!
+        eval { require Crypt::CBC; };
+        if($@) {
+                $NOTEDB::crypt_supported = 0;
+        }
+        else {
+                $NOTEDB::crypt_supported = 1;
+        }
+}
+
 # Globals:
-my ($DB, $table, $fnum, $fnote, $fdate, $version);
+my ($DB, $table, $fnum, $fnote, $fdate, $version, $cipher);
 $table = "note";
 $fnum = "number";
 $fnote = "note";
 $fdate = "date";
-$version = "(NOTEDB::mysql, 1.2)";
+$version = "(NOTEDB::mysql, 1.3)";
 
 # prepare some std statements... #####################################################################
 my $sql_getsingle	= "SELECT $fnote,$fdate FROM $table WHERE $fnum = ?";
@@ -65,6 +77,24 @@ sub version {
 	return $version;
 }
 
+sub no_crypt {
+        $NOTEDB::crypt_supported = 0;
+}
+
+sub use_crypt {
+        my($this, $key, $method) = @_;
+        if($NOTEDB::crypt_supported == 1) {
+                eval {
+                        $cipher = new Crypt::CBC($key, $method);
+                };
+		if($@) {
+			$NOTEDB::crypt_supported == 0;
+		}
+        }
+        else{
+                print "warning: Crypt::CBC not supported by system!\n";
+        }
+}
 
 sub get_single 
 {
@@ -76,7 +106,7 @@ sub get_single
 	$statement->bind_columns(undef, \($note, $date)) || die $DB->errstr();
 
 	while($statement->fetch) {
-		return $note, $date;
+		return ude($note), ude($date);
 	}
 }
 
@@ -90,8 +120,8 @@ sub get_all
         $statement->bind_columns(undef, \($num, $note, $date)) || die $DB->errstr();
 
         while($statement->fetch) {
-                $res{$num}->{'note'} = $note;
-		$res{$num}->{'date'} = $date;
+                $res{$num}->{'note'} = ude($note);
+		$res{$num}->{'date'} = ude($date);
         }
 	return %res;
 }
@@ -114,15 +144,28 @@ sub get_search
 {
 	my($this, $searchstring) = @_;
 	my($num, $note, $date, %res);
-	$searchstring = "\%$searchstring\%";
-	my $statement = $DB->prepare($sql_search) || die $DB->errstr();
-
-	$statement->execute($searchstring) || die $DB->errstr();
-	$statement->bind_columns(undef, \($num, $note, $date)) || die $DB->errstr();
-
-	while($statement->fetch) {
-		$res{$num}->{'note'} = $note;
-                $res{$num}->{'date'} = $date;
+	if($NOTEDB::crypt_supported != 1) {
+		$searchstring = "\%$searchstring\%";
+		my $statement = $DB->prepare($sql_search) || die $DB->errstr();
+		$statement->execute($searchstring) || die $DB->errstr();
+		$statement->bind_columns(undef, \($num, $note, $date)) 
+			|| die $DB->errstr();
+		while($statement->fetch) {
+			$res{$num}->{'note'} = $note;
+	                $res{$num}->{'date'} = $date;
+		}
+	}
+	else {
+		my %res = $this->get_all();
+		foreach $num (sort { $a <=> $b } keys %res) {
+			$note = ude($res{$num}->{'note'}); 
+                	$date = ude($res{$num}->{'date'});
+			if($note =~ /$searchstring/i)
+                	{
+                        	$res{$num}->{'note'} = $note;
+                        	$res{$num}->{'date'} = $date;
+                	}
+		}
 	}
 	return %res;
 }
@@ -138,7 +181,7 @@ sub set_edit
 	
 	$note =~ s/'/\'/g;
         $note =~ s/\\/\\\\/g;
-	$statement->execute($note, $date, $num) || die $DB->errstr();
+	$statement->execute(uen($note), uen($date), $num) || die $DB->errstr();
 }
 
 
@@ -150,7 +193,7 @@ sub set_new
 
 	$note =~ s/'/\'/g;
 	$note =~ s/\\/\\\\/g;	
-	$statement->execute($num, $note, $date) || die $DB->errstr();
+	$statement->execute($num, uen($note), uen($date)) || die $DB->errstr();
 }
 
 
@@ -192,6 +235,29 @@ sub set_recountnums
 		$setnum = $pos +1;
 		$sub_statement->execute($setnum,$count[$pos]) || die $DB->errstr();
 	}
+}
+
+sub uen
+{
+        my($T);
+        if($NOTEDB::crypt_supported == 1) {
+                eval {
+                        $T = pack("u", $cipher->encrypt($_[0]));
+                }
+        }
+        chomp $T;
+        return $T;
+}
+
+sub ude
+{
+        my($T);
+        if($NOTEDB::crypt_supported == 1) {
+                eval {
+                        $T = $cipher->decrypt(unpack("u",$_[0]))
+                }
+        }
+        return $T;
 }
 
 1; # keep this!

@@ -1,3 +1,7 @@
+READ THIS FILE, IF YOU ARE UPGRADING FROM 0.9 TO 1.0.0
+======================================================
+
+
 In any case: BACKUP your existing note database!!!!!!!
 The format has not changed, but some default values
 (see the new config file-sample). Use this command
@@ -6,22 +10,39 @@ of note:
 	"note -D"
 This works with both the mysql and the binary version.
 
-You need to reedit your configfile, since there are now
-some new required options! The most important: $dbdriver.
+You need to reedit your configfile. Please refer to the
+sample config in config/noterc.
 
-If you used previously a binary db without a config, then
-you will get trouble with your existing notedb because the
-default values for field sizes has been changed (it was too
-small)! You have two choices: 
-1. make a database dump ("note -D") with your old note-version.
-2. remove your existing .notedb (and/or back it up!)
-3. install the new note version
-4. import the previously created dump ("note -I note.dump.23112")
-or
-Edit the config to reflect your field size settings. Set the
-fields MAX_TIME=64 and MAX_NOTE=1024 (which was the default of
-previous versions of note).
+======================================================
 
+This version of note has now encryption support build in.
+If you decide to use it, you need to re-initialize your
+note database. That's why, because your current database
+is unencrypted and *if* you want to secure your data, you
+need to secure everything. That means, your existing data
+must be encrypted before you can use this new capability!
+
+Follow this steps:
+	o backup existing db:
+	  $ note -D
+	o backup the db:
+	  $ cp .notedb .notedb.save
+	  or (for mysql users!):
+	  $ cp -r /usr/local/mysql/data/notedb ~/notedb.mysql.save
+	o go into note and delete all existing notes:
+	  $ note -d 1-20 (or however)
+ 	o now upgrade your note installation:
+	  $ perl Makefile.PL; make install
+	o re-configure note. Turn $USE_CRYPT on by setting it
+	  to "YES".
+	o re-initialize your database:
+	  $ note -I note.dump.2323 (or whatever)
+	  note will prompt you for a passphrase. It will be used
+	  by Crypt::CBC for encrypting your data.
+From now on, your data is encrypted. You will need the passphrase
+you set above for decrypting it! So - don't forget it!
+
+======================================================
 
 AGAIN:	YOU HAVE BEEN WARNED! DO NOT UPGRADE WITHOUT MADE A 
 	BACKUP OF YOUR DATABASE! I AM NOT RESPONSIBLE IF YOU

@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: binary.pm,v 1.3 2000/03/20 00:36:50 thomas Exp thomas $
+# $Id: binary.pm,v 1.4 2000/04/17 17:39:27 thomas Exp thomas $
 # Perl module for note
 # binary database backend. see docu: perldoc NOTEDB::binary
 #
@@ -9,10 +9,23 @@ use IO::Seekable;
 
 package NOTEDB;
 use Fcntl qw(LOCK_EX LOCK_UN);
-
+BEGIN {
+	# make sure, it works, although encryption
+	# not supported on this system!
+	eval { require Crypt::CBC; };
+	if($@) {
+		$NOTEDB::crypt_supported = 0;
+	}
+	else {
+		$NOTEDB::crypt_supported = 1;
+	}
+}
+	
 # Globals:
 my ($NOTEDB, $sizeof, $typedef,$version);
-$version = "(NOTEDB::binary, 1.3)";
+my ($cipher);
+
+$version = "(NOTEDB::binary, 1.4)";
 
 
 sub new
@@ -54,6 +67,24 @@ sub version {
         return $version;
 }
 
+sub no_crypt {
+	$NOTEDB::crypt_supported = 0;
+}
+
+sub use_crypt {
+	my($this,$key,$method) = @_;
+	if($NOTEDB::crypt_supported == 1) {
+		eval {
+			$cipher = new Crypt::CBC($key, $method);
+		};
+		if($@) {
+                        $NOTEDB::crypt_supported == 0;
+                }
+	}
+	else{
+		print "warning: Crypt::CBC not supported by system!\n";
+	}
+}
 
 sub get_single 
 {
@@ -240,17 +271,31 @@ sub set_recountnums
 
 sub uen
 {
-    my($T);
-        $T = pack("u", $_[0]);
-        chomp $T;
-        return $T;
+	my($T);
+	if($NOTEDB::crypt_supported == 1) {
+		eval {
+			$T = pack("u", $cipher->encrypt($_[0]));
+		};
+	}
+	else {
+    		$T = pack("u", $_[0]);
+	}
+    	chomp $T;
+    	return $T;
 }
 
 sub ude
 {
-    my($T);
-        $T = unpack("u", $_[0]);
-        return $T;
+	my($T);
+	if($NOTEDB::crypt_supported == 1) {
+		eval {
+			$T = $cipher->decrypt(unpack("u",$_[0]));
+		};
+	}
+	else {
+		$T = unpack("u", $_[0]);
+	}
+	return $T;
 }
 
 1; # keep this!
@@ -268,6 +313,16 @@ NOTEDB::binary - module lib for accessing a notedb from perl
 	
 	# create a new NOTEDB object
 	$db = new NOTEDB("binary", "/home/tom/.notedb", 4096, 24);
+
+	# decide to use encryption
+	# $key is the cipher to use for encryption
+	# $method must be either Crypt::IDEA or Crypt::DES
+	# you need Crypt::CBC, Crypt::IDEA and Crypt::DES to have installed.
+	$db->use_crypt($key,$method);
+
+	# do not use encryption
+	# this is the default
+	$db->no_crypt;
 
 	# get a single note
 	($note, $date) = $db->get_single(1);

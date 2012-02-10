@@ -1,4 +1,4 @@
-# 0.8
+# 1.0.0
 # This is a sample config for the note script
 # There are usefully defaults set in note itself.
 # 
@@ -11,7 +11,7 @@
 #
 # You can contact me per email: <tom@daemon.de>
 # 
-# Thomas Linden, 19/03/2000
+# Thomas Linden, 18/04/2000
 
 
 # Your home, better do not change it!
@@ -19,7 +19,8 @@ $HOME = $ENV{'HOME'};
 
 
 # specify the path, where the NOTEDB directory
-# resides
+# resides. This will only used if it is not
+# installed inside the perl-lib directory structure!
 $libpath = "/usr/local/lib";
 
 
@@ -55,10 +56,18 @@ $MAX_NOTE = 4096;
 
 # Define the maximum bytes a timestamp can have
 # in a note-entry.
-$MAX_TIME = 24;
+$MAX_TIME = 64;
 ####### end binary #################
 
 
+# ENCRYPTION
+# if you want to encrypt your note-data, turn this on
+# by setting to "YES". The default is no.
+# if turned on, note will ask you for a passphrase
+$USE_CRYPT = "NO";
+# takes only affect if $USE_CRYPT is on!
+# Possible values: IDEA or DES
+$CRYPT_METHOD = "IDEA"; # requires Crypt::IDEA
 
 
 # uncomment this, if you want to run note always
