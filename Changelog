@@ -1,0 +1,11 @@
+0.2:
+FIXED:		now any occurence of ' will be masked with \' before storage
+			to the mysql database.
+FIXED:		now numbers of notes will be recounted, if one delete one note,
+			so the list of notes will everytime start with 1,2,3,...
+CHANGED:	the look of the list output has been changed, similar to a table
+
+
+
+0.1:
+INITIAL RELEASE.
