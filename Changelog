@@ -1,4 +1,25 @@
 ================================================================================
+1.2.5:
+FIXED:          removed any file/path actions using '/'. replaced by portable
+                functions by using File::Spec. This makes it possible to run
+		note unchanged on win32 (and possibly any other) environments.
+
+FIXED:          added a whitespace to the prompt in interactive mode to
+                circumvent a bug in the win32 Term::ReadLine module which causes
+		the cursor to be displayed on the left side (column 0) of
+		the screen.
+
+FIXED:		added "or die" code to some commands which are running inside
+                an eval{} block to fetch errors. Without the "or die"s no
+		error could ever catched.
+
+CHANGED:        removed HOME variable support of the noterc. in fact, if it
+                exists, no error will occur, but it will no longer be used.
+		It didn't work in older versions anyway.
+
+ADDED:          It is now possible to quit note using CTRL-D (or: EOF)
+
+================================================================================
 1.2.4:
 CHANGED:    	in the function find_editor() the alternatives vim and pico
 		has been removed because they would never had a match.

@@ -513,6 +513,6 @@ Thomas Linden <tom@daemon.de>
 
 =head1 VERSION
 
-1.2.4 (19/03/2003)
+1.2.5 (19/01/2004)
 
 =cut

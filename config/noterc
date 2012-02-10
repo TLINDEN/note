@@ -1,10 +1,10 @@
-# 1.2.4        -*- sh -*- 
+# 1.2.5        -*- sh -*- 
 # This is a sample config for the note script
 # There are useful defaults set in note itself.
 # 
 # Copy it to your $HOME as .noterc
 #
-# note is Copyright (c) 1999-2003 Thomas Linden. 
+# note is Copyright (c) 1999-2004 Thomas Linden. 
 # You can contact me per email: <tom@daemon.de>
 #
 # comments start with #, empty lines will be ignored.
@@ -13,15 +13,10 @@
 # by minimum one space (more spaces and/or tabs are allowed)
 
 
-# Your home directory, better do not change it!
-# can be an environment variable or a path
-Home			$ENV{'HOME'}
-
-
 # specify the path, where the NOTEDB lib directory
 # resides. This will only used if it is not
 # installed inside the perl-lib directory structure!
-LibPath			/usr/local/lib
+#LibPath			/usr/local/lib
 
 
 # you need to decide which database backend you want

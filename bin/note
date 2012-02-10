@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 # note - console notes management with database and encryption support.
-# Copyright (C) 1999-2003 Thomas Linden   (see README for details!)
+# Copyright (C) 1999-2004 Thomas Linden   (see README for details!)
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -27,6 +27,9 @@ use strict;
 no strict 'refs';
 #use Data::Dumper;
 use Getopt::Long;
+use FileHandle;
+use File::Spec;
+
 
 #
 # prototypes
@@ -112,10 +115,9 @@ $date 		= &getdate;
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
 $HOME 		= $ENV{'HOME'};
-$CONF 		= $HOME . "/.noterc";
+$CONF 		= File::Spec->catfile($HOME, ".noterc");
 $dbdriver 	= "binary";
-$libpath 	= "/usr/local/lib";
-$NOTEDB 	= $HOME . "/.notedb";
+$NOTEDB 	= File::Spec->catfile($HOME, ".notedb");
 $MAX_NOTE 	= 4096;
 $MAX_TIME 	= 84;
 $COLOR 		= "YES";
@@ -126,12 +128,12 @@ $TIME_COLOR   	= "blue";
 $TOPIC_COLOR 	= "bold";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.2.4";
+$version 	= "1.2.5";
 if ($TOPIC) {
   $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 }
 $USE_CRYPT 	= "NO";
-$TempDir        = "/tmp";
+$TempDir        = File::Spec->tmpdir();
 # mysql stuff
 $table          = "note";
 $fnote          = "note";
@@ -370,7 +372,9 @@ if ($DEFAULT_LIST eq "LONG") {
 # *if* loading of the config was successful, try to load the
 # configured database backend. Currently supported:
 # mysql, dbm and binary.
-unshift @INC, $libpath;
+if ($libpath) {
+  unshift @INC, $libpath;
+}
 
 if ($dbdriver eq "binary") {
   eval {
@@ -381,13 +385,13 @@ if ($dbdriver eq "binary") {
 elsif ($dbdriver eq "mysql") {
   # do the new() later because of the encrypted password!
   eval {
-    require "NOTEDB/mysql.pm";
+    require NOTEDB::mysql;
   };
   die "mysql backend unsupported: $@\n" if($@);
 }
 else {
   eval {
-    require "NOTEDB/$dbdriver.pm";
+    require "NOTEDB::$dbdriver";
     $db = new NOTEDB($dbdriver, $dbname, $dbhost, $dbuser, $dbpasswd, $table, $fnum, $fnote, $fdate);
   };
 }
@@ -423,11 +427,11 @@ if ($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
     eval {
       local($|) = 1;
       local(*TTY);
-      open(TTY,"/dev/tty");
-      system ("stty -echo </dev/tty");
+      open(TTY,"/dev/tty") or die "No /dev/tty!";
+      system ("stty -echo </dev/tty") and die "stty failed!";
       chomp($key = <TTY>);
       print STDERR "\r\n";
-      system ("stty echo </dev/tty");
+      system ("stty echo </dev/tty") and die "stty failed!";
       close(TTY);
     };
     if ($@) {
@@ -512,11 +516,11 @@ sub encrypt_passwd {
   eval {
     local($|) = 1;
     local(*TTY);
-    open(TTY,"/dev/tty");
-    system ("stty -echo </dev/tty");
+    open(TTY,"/dev/tty") or die "No /dev/tty!";
+    system ("stty -echo </dev/tty") and die "stty failed!";
     chomp($key = <TTY>);
     print STDERR "\r\n";
-    system ("stty echo </dev/tty");
+    system ("stty echo </dev/tty") and die "stty failed!";
     close(TTY);
   };
   if ($@) {
@@ -993,17 +997,24 @@ sub interactive {
       $ListType = ($DEFAULT_LIST eq "LONG") ? "LONG" : "";
       undef $SetTitle;
       if ($CurDepth > 2) {
-	print C $menu . $TOPICC . "../" . $CurTopic . $_TOPICC . "> ";
+	print C $menu . $TOPICC . "../" . $CurTopic . $_TOPICC . ">";
       }
       else {
-	print C $menu . $TOPICC . $CurTopic . $_TOPICC . "> ";
+	print C $menu . $TOPICC . $CurTopic . $_TOPICC . ">";
       }
 
       # endless until user press "Q" or "q"!
       if ($term) {
-	$char = $term->readline("");
-	$term->addhistory($char) if $char =~ /\S/;
-	$char =~ s/\s*$//; # remove trailing whitespace (could come from auto-completion)
+	if (defined ($char = $term->readline(" "))) {
+	  $term->addhistory($char) if $char =~ /\S/;
+	  $char =~ s/\s*$//; # remove trailing whitespace (could come from auto-completion)
+	}
+	else {
+	  # shutdown
+	  $| = $Channel;
+	  print "\n\ngood bye!\n";
+	  exit(0);
+	}
       }
       else {
 	$char = <STDIN>;
@@ -1606,13 +1617,12 @@ sub getconfig {
       $time_format      = $value if (/^TimeFormat/);
       $AUTO_CLEAR       = $value if (/^AutoClear/);
     }
-    chomp $home;
-    $home =~ s/\/*$//;		# cut eventually / at the end
-    $HOME = eval($home);
+
     if ($NOTEDB =~ /^(~\/)(.*)$/) {
-      $NOTEDB = "/home/" . $USER . "/" . $2;
+      $NOTEDB = File::Spec->catfile($HOME, $2);
     }
-    $libpath =~ s/\/*$//;
+
+    $libpath = (File::Spec->splitpath($libpath))[1];
 
     close CONFIG;
 }
