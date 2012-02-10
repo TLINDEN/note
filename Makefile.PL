@@ -24,6 +24,19 @@ sub chk_mod
 }
 
 &chk_mod(
+	"Getopt::Long",
+	"WARNING: Getopt::Long seems not to be installed on your system!\n"
+	."But it is strongly required in order to run note!\n"
+	);
+
+&chk_mod(
+        "DB_File",
+        "WARNING: DB_File seems not to be installed on your system!\n"
+        ."It is required, if you want to use the DBM backend.\n"
+        );
+
+
+&chk_mod(
 	"DBI",
 	" WARNING: module DBI is not installed on your system.\n"
 	." It is required, if you want to use a SQL database with\n"
@@ -73,7 +86,7 @@ $install = `which install`;
 
 open M, "> Makefile" || die $!;
 print M qq~BIN = bin/note
-LIBS = NOTEDB/mysql.pm NOTEDB/binary.pm
+LIBS = NOTEDB/mysql.pm NOTEDB/binary.pm NOTEDB/dbm.pm
 INSTBIN = $BINDIR
 INSTLIB = $LIBDIR
 INSTALL = $install

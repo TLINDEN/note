@@ -1,5 +1,34 @@
 ==================================================================================
 
+1.0.5:
+FIXED:		the T (and t respectively) printed nothing out since 1.0.3! It does
+		it now again...
+ADDED:		a new database backend added, NOTEDB::dbm, which uses DBM files for
+		storage.
+FIXED:		&display-tree returns now, if there is no note, otherwise it
+		would die because of an undefined refernce.
+CHANGED:	Changed the config file format completely. It is now no more a perl
+		file, instead it is a simple plain text file which note parses.
+CHANGED:	Changed the way, note loads it database backend. It uses now the 
+		$dbdriver variable as module-name, which makes it possible easily
+		to write your own backend without the need to change note itself.
+FIXED:		Removed Getopt::Long option "bundling", causes errors with perl 
+		5.6.0 and is not senceful.
+FIXED:		Added the Getopt::Long option "no_ignore_case". In 1.0.4 options
+		were case insensitive causing -i to be interpreted as --import
+		instead of --interactive ;-(((
+ADDED:		a new config option $DEFAULT_LIST, which causes note,  \
+		if turned to "LONG", to use long-listing as default.    |
+		But it will still be able to use short-listing if you   |
+		explicit specify that.                                  |    submitted by
+FIXED:		sub search prints now an appropriate error-message in   |==> Peter Palmreuther
+		case no searchstring was given instead of jumping to    |    thanks a lot!
+		usage.                                                  |
+CHANGED:	Changed the text in the interactive help to reflect     |
+		changes of verion 1.0.3 (t and T).                     /
+
+==================================================================================
+
 1.0.4:
 CHANGED:	Moved from @ARGV-parsing to Getopt::Long, adding options is now
 		much easier and I do now understand my own code ;-)

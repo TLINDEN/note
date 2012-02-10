@@ -1,3 +1,26 @@
+1.0.5 important note upgrade information
+========================================
+
+If you are upgrading from previous versions of note, you 
+will need to create a new config file, since the format of
+that file has completely changed!
+
+Take a look at the sample in config/noterc for details.
+
+note will NOT work with an existing database and an old config.
+You have to create a new config based on your old settings.
+
+
+Please don't forget to make a backup of your database before 
+upgrading! I am not responsible for data loss!
+
+I told ya...
+
+
+
+
+
+Thomas Linden <tom@daemon.de>
 READ THIS FILE, IF YOU ARE UPGRADING FROM 0.9 TO 1.0.x
 ======================================================
 

@@ -1,5 +1,5 @@
-note 1.0.4 by Thomas Linden, 12/05/2000
-
+note 1.0.5 by Thomas Linden, 14/05/2000
+=======================================
 
 Introduction
 ============
@@ -8,17 +8,7 @@ Introduction
 	perl, which allows you to manage notes similar
 	to programs like "knotes" from commandline.
 
-	This version is completely rewritten and it is
-	able to display colored output.
-
-	You can add, edit, list and delete as many notes
-	as you want. You can run note from the commandline
-	or interactive from within your console. You can
-	sort your notes in different topics, which is usefull
-	if you have a lot of them. Additional it is possible
-	to encrypt your notes for protection.
-
-	There are currently two different database backends,
+	There are currently three different database backends,
 	which you can use with note:
 		o NOTEDB::binary - this is the default backend
 		  and uses a binary file to store your notes.
@@ -27,6 +17,66 @@ Introduction
 		  easily to another DBMS since this module uses
 		  the Perl standard module "DBI" for database-
 		  access. See below for more info on this topic!
+		o NOTEDB::dbm - this module uses two DBM files
+		  for data storage and requires the module DB_FILE,
+		  which is part of the perl standard distribution.
+		  See below for more details about the DBM module.
+
+
+
+Where to get?
+=============
+
+	By now at 
+		http://www.daemon.de/software.html 
+	or
+		ftp://www.0c49.org/pub/scip/note/
+	
+	You may also try your nearest tucows mirror.
+
+
+
+
+Features
+========
+
+	o Three different database backends, mysql(DBI), dbm, binary(bin file).
+	o Commandline interface using the standard perl module
+	  Getopt::Long, which allows you to use short or long
+	  command-line options.
+	o Interactive interface(pure ascii), the following functions
+	  are available in interactive mode: list, display, topic,
+	  delete, edit, help.
+	o Highly confiurable using a perlish configfile ~/.noterc.
+	  although it is configurable it is not required, note can
+	  run without a configfile using useful default presets.
+	o Colourized output is supported using ASCII Escape-Sequences.
+	o The user can customize the color for each item.
+	o Data can be stored in various different database backends,
+	  since all database access is excluded from the program itself
+	  in perl modules.
+	o Notes can be deleted, edited and you can search trough your notes.
+	o Notes can be categorized. Each category(topic) can contain multiple
+	  notes and even more sup-topics. There is no limitation about
+	  sub topics.
+	o You can view all notes in a list and it is possible only to view
+	  notes under a certain topic.
+	o There is a tree-view, which allows you to get an overview of your
+	  topic-hierarchy.
+	o Notes can be encrypted using DES or IDEA algorythms and Crypt::CBC.
+	o You can dump the contents of your note database into a plain text
+	  file, which can later be imported. Imports can be appended or it can
+	  overwrite an existing database (-o).
+	o Note has scripting capabilities, you can create a new note by piping
+	  another commands output to note, you can also import a notedump from
+	  stdin as well es duming to stdout instead a file. Additional, there 
+	  is an option --raw available, which prints everything out completely
+	  without formatting.
+	o It can be installed without root-privileges.
+	o Last, a while ago a user stated: "... it simply does, what it says ..."
+
+
+
 
 
 Requirements
@@ -39,7 +89,8 @@ Requirements
 		  you want to use the binary database backend.
 		o DBI module and DBI::mysql if you want to use the 
 		  mysql database backend.
-		o Getopt::Long
+		o The module DB_FILE if you want to use the DBM module.
+		o Getopt::Long (part of perl std ditribution)
 
 
 
@@ -59,10 +110,16 @@ Installation
 	see mysql/README.
 
 	If want to use another SQL database, i.e. postgresql then set
-	the option "$DRIVER" to the name of the responding DBI-driver
+	the option "DbDriver" to the name of the responding DBI-driver
 	and create a symlink of this name like this:
 	/usr/lib/perl5/siteperl/NOTEDB $ ln -s mysql.pm oracle.pm
 	The functionality is the same, but not the name!
+
+	The default binary file backend does not need any special installation
+	procedure, you need only to spceify a filename in your config file.
+
+	The DBM backend(NOTEDB::dbm) requires the existence of a directory,
+	which you must specify in your config using the option "DbName".
 
 
 
@@ -154,8 +211,8 @@ Usage
 	What the hell, does it?! Step by step:
 		o "note -D -" creates a note-database dump and prints it out
 		  to stantdard output.
-		o "|" this is the shell's pipe command. It does take the output
-		  of the left program and gives it to the right progrem as standard
+		o "|" this is the shell's pipe command. It takes the output
+		  of the left program and gives it to the right program as standard
 		  input.
 		o "note -o -I -" imports a note-database dump from standard input
 		  and overwrites an existing database.
@@ -172,7 +229,7 @@ Topics
 	field for the topic. Instead the topic will be stored right in the
 	note.
 	If the first line of your note contains some text bordered by slashes
-	(or whatever you prefer, set $TopicSep in your config! default is slash), 
+	(or whatever you prefer, set "TopicSeparator" in your config! default is slash), 
 	then note will consider it as the topic of this certain note. For examle:
 	/TodoList/
 	If you are using topics, no data after the topic is allowed, if there	
@@ -187,7 +244,7 @@ Topics
 	will prepend  the string "/topicname/" to the text of your note).
 	
 	You can create at any time from any point a new topic. Just create a new
-	note and type the name of the new topic bordered by slashes (or $TopicSep)
+	note and type the name of the new topic bordered by slashes (or TopicSeparator)
 	at the first line of this note. After saving, there will be available a
 	new topic with one note in it.
 
@@ -258,7 +315,7 @@ Scripting
 	If the variable is present, note will not ask you for a passphrase! 
 		
 	Another thingy you might find useful is the -r (--raw) command-line flag. This
-	turns note into raw mode being silent, which means it will only print the
+	turns note into raw mode , which means it will only print the
 	data without any formatting. Raw mode is available for list and display,
 	since it makes no sense, interactive mode doe not support raw mode.
 
@@ -336,7 +393,7 @@ Security
 	the permission 0600 of the file "~/.notedb" is strongly required!
 
 	Additional, you can turn on encryption from the config file.
-	Simply set $USE_CRYPT to "YES". Please note, that you need
+	Simply set UseEncryption to 1. Please note, that you need
 	to decide, if you want to use encryption before the first use
 	of note! If have already a note database and want to "migrate"	
 	to encryption, I suggest you to follow the directions in the 
@@ -411,7 +468,20 @@ Author and Copyright
 
 
 
+Contributors / Credits
+======================
+
+	Shouts to those guys who helped me to enhance note: THANKS A LOT!
+
+	Jens Heunemann <jens.heunemann@consol.de>	- sub tree.
+	Peter Palmreuther				- various additions.
+	
+	And many other people who sended bug reports, feature requests. If you feel that
+	I forgot your name in this list, then please send me an email and I'll add you.
+
+
+
 Last changed
 ============
 
-	12/05/2000	
+	14/05/2000	
