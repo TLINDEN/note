@@ -1,0 +1,140 @@
+note 0.1 by Thomas Linden, 1999
+
+
+Introduction
+============
+
+	This is a small console program written in
+	perl, which allows you to manage notes similar
+	to programs like "knotes" from commandline.
+
+	You can add, edit, list and delete as many notes
+	as you want. The notes are stored in a mysql
+	database. You might think, "what an overkill...",
+	but doing it this way provides some important
+	advantages:
+		o data integrity
+		o no need of another proprietary file format
+		o no new engine to maintain this file format
+		o speed
+		o portability
+		o availability
+		  ...
+
+
+Requirements
+============
+
+	You need the following things:
+		o perl installed (5.004x)
+		o mysql database installed and running
+		o Mysql perlmodule (you can find it on 
+		  http://www.mysql.org) PLEASE NOTE:
+		  It needs the Module "Mysql". Newer versions
+		  are DBI, which you can also use to access
+		  mysql databases. If you want to use it, you
+		  have to rewrite the program. Please let me
+		  know, if you did it :-)
+		o permissions to create a new database and
+		  to write data to this database.
+
+
+
+Installation
+============
+
+	First, make sure all these things above are ok.
+	You can use the script "install.sh" to create a new
+	database and the table structure. You might edit 
+	the script before running it.
+
+	If you getting trouble, i.e. if you have not the 
+	required permissions to do that, please make sure,
+	you can. 
+	As user root, you have to give your username the 
+	neccessary permissions. Please refer to the mysql 
+	documentation, how to do that.
+	After that repeat the step above.
+
+	As root, copy the perl-script "note" to /usr/bin.
+
+	This should be all.
+
+
+
+Configuration
+=============
+
+	If you created the database with install.sh, you 
+	do not need to do anything further. Simply run
+	"note" without any commandline parameters. It will
+	create a configfile ~/.noterc for you.
+	You might take a look to this file and change something,
+	if neccessary.
+
+
+
+
+Usage
+=====
+
+	If you don't know, how to run note, try "note -h" first. 
+	It will tell you all available commandline options.
+
+	To create a new note, simply run "note". You can enter
+	the note (there is no limitation on length of the note).
+	End by typing a . on a line itself. note will tell you the 
+	number of the note.
+
+	If you want to view the note, type "note 1", if the notenumber
+	was 1. 
+
+	If you want to get an overview of all notes, type "note -l".
+	You will get a list of all notes, containing the number,
+	the first line and the creation date.
+
+	To edit a certain note, type "note -e 1". It will invoke your
+	editor (vi or pico). You can edit it, after saving, note
+	will store the changed note to the database.
+
+	Of course you can drop a certain note: "note -d 1" deletes
+	note number 1.
+
+	If you cannot remember, which note you are looking for, you
+	can use the search capability of note: "note -s <searchstring>".
+	note will search the whole note database case insensitive for
+	an occurence of this string and tell you the number and first-
+	line it have.
+
+
+
+
+Comments
+========
+
+	You can send any comments to Thomas Linden <tom@daemon.de>.
+
+
+
+
+License
+=======
+
+	This program is GPL. 
+
+
+
+
+Author
+======
+
+	The author os Thomas Linden.
+
+
+
+
+Last changed
+============
+
+	07.11.1999
+	
