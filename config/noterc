@@ -1,4 +1,5 @@
-# 1.2.5        -*- sh -*- 
+# note 1.2.6        -*- sh -*- 
+#
 # This is a sample config for the note script
 # There are useful defaults set in note itself.
 # 
@@ -28,7 +29,10 @@
 DbDriver		binary
 
 
+
+#
 # backend specific settings for sql backend
+#
 #DbHost			localhost
 #DbPort
 #DbUser			you
@@ -38,25 +42,34 @@ DbDriver		binary
 #FieldNumber		number
 #FieldNote		note
 #FieldDate		date
-# uncomment for using an encrypted password, generate it with note "--encrypt"
+# uncomment for using an encrypted password, generate it
+# with note "--encrypt"
 #encrypt_passwd		1
 #### specific end ###
 
 
+
+
+#
 # backend specific settings for binary(default) backend
+#
+# where to store the database (filename)
 NoteDb			~/.notedb
+#
 # Define the maximum bytes fields can have in a
 # note-entry. Do not change MaxTimeByte to less than 64!
-
 MaxNoteByte		4096
 MaxTimeByte		64
 #### specific end ###
 
 
 # backend specific settings for DBM backend
-# this must be an existing directory!
+#
+# Directory where to store the dbm files
 #DbName			/home/you/.notedbm
 #### specific end ###
+
+
 
 # You can use encryption with note, that means notes and
 # timestamps will be stored encrypted. This is supported
@@ -64,16 +77,20 @@ MaxTimeByte		64
 # Set to 1 to turn it on. The Default is 0 (off)
 UseEncryption		0
 
+
+
 # Specify the encryption protocol. The appropriate perl
 # module needs to be installed. Possible velues are
 # IDEA, DES or Blowfish, the default is IDEA.
 CryptMethod		IDEA
 
 
+
 # You can run note always in interactive mode by simply
 # typing "note". Set this option to 1 to turn it on.
 # The default is 1 (on).
 AlwaysInteractive	1
+
 
 
 # In interactive mode, note issues a list command if you 
@@ -90,9 +107,11 @@ DefaultLong		0
 AlwaysEditor		0
 
 
+
 # uncomment and edit it, if you want to use another
 # editor than the default $EDITOR or as fallback vi.
 #PreferredEditor 	emacs
+
 
 
 # If you dont prefer that note updates the timestamp of a
@@ -102,10 +121,12 @@ AlwaysEditor		0
 KeepTimeStamp		0
 
 
+
 # You can specify your own topic separator here.
 # the default topic separator is a normal slash: "/"
 # see README for details about topics!
 TopicSeparator		/
+
 
 
 # The maximum width for displaying a note, in CHARS.
@@ -115,10 +136,13 @@ TopicSeparator		/
 MaxLen			auto
 
 
+
 # Set this to 0 if you dont want note to automatically
 # clear the screen after displaying something and after
 # exit (feature introduced in 1.2.1).
 AutoClear               1
+
+
 
 # note can use colors for output, set this option to
 # 1, if you don't want it, or if your terminal does
@@ -126,18 +150,21 @@ AutoClear               1
 UseColors		1
 
 
+
 # Color-definitions of the various items. Will only 
 # take effect, if "UseColors" is turned on!
-BorderColor		BLACK
-NumberColor		blue
-NoteColor		green
-TimeColor		black
-TopicColor		BLACK
+#
 # The following colors are available:
 # black, red, green, yellow, blue, magenta, cyan and white.  
 # for bold color write it uppercase (BLACK will be bold black)
 # for underlined color append an underscore (blue_ will be underlined blue)
 # for inverted color append an "I" (greenI will be inverted green)
+BorderColor		BLACK
+NumberColor		blue
+NoteColor		green
+TimeColor		black
+TopicColor		BLACK
+
 
 
 # Additional to colors, you can also do a little bit of formatting your
@@ -145,6 +172,7 @@ TopicColor		BLACK
 # You need to set this Option to 1, if you decide to make use of this
 # capabily. You can also set it to 'simple' to achieve a simplified syntax.
 FormatText		1
+
 
 
 # You might specify your own directory for temporary files.

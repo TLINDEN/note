@@ -8,6 +8,7 @@ package NOTEDB;
 use strict;
 use Data::Dumper;
 use IO::Seekable;
+use File::Spec;
 
 use NOTEDB;
 
@@ -32,13 +33,15 @@ sub new
 	exit(1);
     }
 
-    $self->{version} = "(NOTEDB::binary, 1.7)";
+    $self->{version} = "(NOTEDB::binary, 1.8)";
     $self->{NOTEDB}  = $dbname;
+
     my $TYPEDEF      = "i a$MAX_NOTE a$MAX_TIME";
     my $SIZEOF       = length pack($TYPEDEF, () );
 
     $self->{sizeof}  = $SIZEOF;
     $self->{typedef} = $TYPEDEF;
+    $self->{maxnote} = $MAX_NOTE;
 
     return $self;
 }
@@ -192,9 +195,11 @@ sub get_search
 
 
 
-sub set_edit
-{
+sub set_edit {
     my($this, $num, $note, $date) = @_;
+
+    $this->warn_if_too_big($note, $num);
+
     my $address = ($num -1 ) * $this->{sizeof};
 
     open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
@@ -214,9 +219,11 @@ sub set_edit
 }
 
 
-sub set_new
-{
+sub set_new {
     my($this, $num, $note, $date) = @_;
+
+    $this->warn_if_too_big($note, $num);
+
     open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
     flock NOTE, LOCK_EX;
 
@@ -307,6 +314,7 @@ sub uen
 	$T = pack("u", $_[0]);
     }
     chomp $T;
+
     return $T;
 }
 
@@ -326,6 +334,36 @@ sub ude
 }
 
 
+sub warn_if_too_big {
+  my ($this, $note, $num) = @_;
+
+  my $len = length($this->uen($note));
+
+  if ($len > $this->{maxnote}) {
+    # calculate the 30% uuencoding overhead
+    my $overhead = int(($this->{maxnote} / 100) * 28);
+
+    # fetch what's left by driver
+    my $left = substr $note, $this->{maxnote} - $overhead;
+
+    $left = "\n$left\n";
+    $left =~ s/\n/\n> /gs;
+
+    print STDERR "*** WARNING $this->{version} WARNING ***\n"
+              ."The driver encountered a string length problem with your\n"
+	      ."note entry number $num. The entry is too long. Either shorten\n"
+	      ."the entry or resize the database field for entries.\n\n"
+              ."The following data has been cut off the entry:\n"
+              ."\n$left\n\n";
+
+    my $copy = File::Spec->catfile($ENV{'HOME'}, "entry-$num.txt");
+    open N, ">$copy" or die "Could not open $copy: $!\n";
+    print N $note;
+    close N;
+
+    print "*** Wrote the complete note entry number $num to file: $copy ***\n";
+  }
+}
 
 
 
@@ -405,7 +443,6 @@ please see the section SYNOPSIS, it says it all.
 =head1 AUTHOR
 
 Thomas Linden <tom@daemon.de>.
-
 
 
 =cut

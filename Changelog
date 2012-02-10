@@ -1,3 +1,9 @@
+1.2.6:
+FIXED:		the binary driver (NOTEDB::binary) encounters now if a note
+		entry is bigger then MaxNoteByte. It prints the overlapping
+		part to STDERR, and a warning message and finally saves
+		the complete, unchanged note entry to an external text file.
+
 ================================================================================
 1.2.5:
 FIXED:          removed any file/path actions using '/'. replaced by portable
