@@ -1,0 +1,45 @@
+                        <h2>upgrade from previous version of note to 1.0.x</h2>
+<p>
+In any case: BACKUP your existing note database!!!!!!!
+The format has not changed, but some default values
+(see the new config file-sample). Use this command
+to save your note database with your *old* version
+of note:<br>
+        "note -D"<br>
+This works with both the mysql and the binary version.
+<p>
+You need to reedit your configfile. Please refer to the
+sample config in config/noterc.
+<p>
+<hr>
+<p>
+This version of note has now encryption support build in.
+If you decide to use it, you need to re-initialize your
+note database. That's why, because your current database
+is unencrypted and *if* you want to secure your data, you
+need to secure everything. That means, your existing data
+must be encrypted before you can use this new capability!
+<p>
+Follow this steps:
+<ul>
+        <li> backup existing db:
+        <br>  $ note -D
+        <li> backup the db:
+        <br>  $ cp .notedb .notedb.save
+          or (for mysql users!):
+        <br>  $ cp -r /usr/local/mysql/data/notedb ~/notedb.mysql.save
+        <li> go into note and delete all existing notes:
+        <br>  $ note -d 1-20 (or however)
+        <li> now upgrade your note installation:
+        <br>  $ perl Makefile.PL; make install
+        <li> re-configure note. Turn $USE_CRYPT on by setting it
+          to "YES".
+        <li> re-initialize your database:
+        <br>  $ note -I note.dump.2323 (or whatever)<br>
+          note will prompt you for a passphrase. It will be used
+          by Crypt::CBC for encrypting your data.
+</ul>
+From now on, your data is encrypted. You will need the passphrase
+you set above for decrypting it! So - don't forget it!
+
+

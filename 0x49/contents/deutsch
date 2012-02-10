@@ -1,0 +1,19 @@
+              <h2>Hinweise f&uuml;r deutsche Besucher</h2>
+note ist ein Konsolenprogram, mit dem man einfach Notizen verwalten
+                                    kann, ähnlich wie bei "knotes". Es ist in Perl geschrieben. Note
+                                    verwendet externe (mitgelieferte!) Module als Speicher-Backend, um
+                                    die Daten zu speichern. Momentan ist ein mysql-Modul dabei, sowie
+                                    ein "binary"-Modul, note's eigenes Datenformat und seit 1.0.5 auch ein
+                                    DBM modul. Das mysql Modul verwendet Perls Standard Modul DBI
+                                    und ist damit für alle gängigen DBMS verwendbar.
+                                    Seit Version 1.0.0 wird Verschlüsselung unterstützt(IDEA oder DES),
+                                    man kann also durchaus auch sensible Daten speichern.
+<p>
+Die Dokumentation f&uuml;r <b>note</b> liegt leider nur in englisch vor. Trotzdem m&uuml;ssen Deutsche
+nicht ganz leer ausgehen :-)
+<p>
+Hannes Lau hat auf seiner <a href="http://home.debitel.net/user/hannes.lau/Linux-Text.htm#Notizen">Homepage</a> eine kurze Beschreibung bereitgestellt (Tausend Dank!).
+<p>
+Eine ausführliche Beschreibung des Programmes ist ausserdem im
+<a href="http://www.linux-magazin.de">LinuxMagazin 5/2000</a> S. 106 erschienen (allerdings basierend auf einer
+älteren Version...)!<br> *stolzsei* ;-)

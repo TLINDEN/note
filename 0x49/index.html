@@ -1,0 +1,86 @@
+<!doctype html public "-//W3C//DTD HTML 4.0 Transitional//EN">
+<?
+	# ePerl
+	my $me = $0;
+	$me =~ s(^.*/)();
+        my $src = $me;
+        $src =~ s/\.html$//;
+?>
+<html>
+<head>
+	<meta name="description" content="www.0x49.org - the home of the console note program">
+	<meta name="keywords"    content="note, notes, notizen, console, perl, textmode, opensource, free">
+	<meta name="author"      content="Thomas Linden">
+	<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+	<title>www.0x49.org - the note homepage (<? print $src ?>)</title>
+	<!--
+		THE CONTENTS OF THESE WEBPAGES ARE PROTECTED BY COPYRIGHT LAW!
+		
+		COPYRIGHT (C) 2000 THOMAS LINDEN, MUNICH.
+		ALL RIGHTS RESERVED.
+	-->
+</head>
+<body link="#000099" vlink="#000099">
+  <br>
+  <TABLE cellspacing="0" cellpadding="0" width="100%" border="0" bgcolor="cornflowerblue">
+  <TR>
+    <TD>
+      <TABLE cellspacing="2" cellpadding="2" width="100%" border="0" bgcolor="#FFFFFF">
+        <TR BGCOLOR="cornflowerblue" align="center">
+          <TD colspan=2 align=right>
+            <SPAN class=titlebar><font face="helvetica" color="#fffff"><b>note 
+	<?
+		# ePerl
+		open VERSION, "contents/version" || die $!;
+		my $version = <VERSION>;
+		close VERSION;
+		chomp $version;
+		print $version;
+	?>
+	    homepage</b></font></SPAN>
+          </TD>
+        </TR>
+        <TR align=left>
+	  <TD width=15% bgcolor="beige" valign="top">
+	    <font face="helvetica" >
+        <?
+		# ePerl
+                open MENU, "contents/menu" || die $!;
+                my @menu = <MENU>;
+                close MENU;
+                foreach (@menu) {
+			if(/\Q$me\E/) {
+				print "<b>$_</b>";
+			}
+			else {
+				print;
+			}	
+		}
+        ?>
+	    </font>
+	    <p>&nbsp;</p>
+	  </TD>
+          <TD valign="top">
+		<TABLE WIDTH="90%" ALIGN="CENTER" VALIGN="TOP">
+		<TR>
+		<TD>
+<?
+	# ePerl
+	$src = "contents/$src";
+	open SRC, "$src" || die $!;
+	my @lines = <SRC>;
+	print @lines;
+	close SRC;
+?>
+		</TD>
+		</TR>
+		</TABLE>
+          </TD>
+        </TR>
+      </TABLE>
+    </TD>
+  </TR>
+  </TABLE>
+<P>
+</body>
+</html>

@@ -1,0 +1,42 @@
+                        <h2>installation of note</h2>
+<p>
+        Unpack the tar-ball and issue the command:<br>
+        $ perl Makefile.PL<br>
+        It will ask you a few questions about file destinations.
+        The script will find itself the proper destinations for
+        the files. So, if you agree with it, simply press ENTER.
+        However, you may decide to use other destinations. In this
+        case, enter it, when asked. This maybe usefull, if you are
+        installing it in your ome-directory and if you are not root! 
+<p>
+        For installation instructions for the mysql database installation
+        see mysql/README.
+<p>
+        If want to use another SQL database, i.e. postgresql then set
+        the option "DbDriver" to the name of the responding DBI-driver
+        and create a symlink of this name like this:
+<br>        /usr/lib/perl5/siteperl/NOTEDB $ ln -s mysql.pm oracle.pm
+<br>        The functionality is the same, but not the name!
+<p>
+        The default binary file backend does not need any special installation
+        procedure, you need only to spceify a filename in your config file.
+<p>
+        The DBM backend(NOTEDB::dbm) requires the existence of a directory,
+        which you must specify in your config using the option "DbName".
+<p>
+
+
+<b>Configuration</b>
+
+        This version of note doesn't neccessarily need
+        a configuration file. But you can have one and change
+        some default values. Take a look to the file config/noterc
+        provided with this tarball. There are detailed instructions
+        about every available parameter.
+<br>        Simply copy this file into your home-directory and name it
+        .noterc
+        If you decide not to use the default database backend (a binary
+        file), you will *need* a configuration!
+
+
+

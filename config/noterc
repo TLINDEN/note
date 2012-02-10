@@ -42,6 +42,8 @@ DbDriver		binary
 #FieldNumber		number
 #FieldNote		note
 #FieldDate		date
+# uncomment for using an encrypted password, generate it with note "--encrypt"
+#encrypt_passwd		1
 #### specific end ###
 
 
@@ -152,7 +154,16 @@ TempDirectory		/home/you/tmp
 
 
 
+# You can jump to a topic by typing "cd 13" in interactive mode.
+# You need to set thi soption to 1 if you want to use this feature.
+ShortCd			0
 
+
+
+# note can use a cached copy of the note database for list/tree/search
+# this is currently only supported by the binary and the mysql backends
+# set it to 1 to turn it on, the default is 0 (off)
+Cache			0
 # That's all about it for now.
 # If you still have any questiosn, please feel free to contact
 # me by email: Thomas Linden <tom@daemon.de>

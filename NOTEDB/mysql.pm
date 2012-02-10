@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: mysql.pm,v 1.5 2000/06/25 19:50:43 scip Exp scip $
+# $Id: mysql.pm,v 1.1.1.1 2000/07/01 14:40:52 zarahg Exp $
 # Perl module for note
 # mysql database backend. see docu: perldoc NOTEDB::binary
 #
@@ -7,20 +7,9 @@
 use DBI;
 use strict;
 use Data::Dumper;
+use NOTEDB;
 
 package NOTEDB;
-
-BEGIN {
-        # make sure, it works, although encryption
-        # not supported on this system!
-        eval { require Crypt::CBC; };
-        if($@) {
-                $NOTEDB::crypt_supported = 0;
-        }
-        else {
-                $NOTEDB::crypt_supported = 1;
-        }
-}
 
 # Globals:
 my ($DB, $table, $fnum, $fnote, $fdate, $version, $cipher);
@@ -35,7 +24,6 @@ my $sql_getsingle	= "SELECT $fnote,$fdate FROM $table WHERE $fnum = ?";
 my $sql_all		= "SELECT $fnum,$fnote,$fdate FROM $table";
 my $sql_nextnum		= "SELECT max($fnum) FROM $table";
 my $sql_incrnum		= "SELECT $fnum FROM $table ORDER BY $fnum";
-my $sql_search		= "SELECT DISTINCT $fnum,$fnote,$fdate FROM $table WHERE $fnote LIKE ?";
 
 my $sql_setnum 		= "UPDATE $table SET $fnum = ? WHERE $fnum = ?";
 my $sql_edit		= "UPDATE $table SET $fnote = ?, $fdate = ? WHERE $fnum = ?";
@@ -57,11 +45,6 @@ sub new
 	my $database = "DBI:$dbdriver:$dbname;host=$dbhost";
 
 	$DB = DBI->connect($database, $dbuser, $dbpasswd) || die DBI->errstr();
-
-	# LOCK the database!
-	my $lock = $DB->prepare("LOCK TABLES $table WRITE") || die $DB->errstr();
-	$lock->execute() || die $DB->errstr();
-
 	return $self;
 }
 
@@ -69,40 +52,36 @@ sub new
 sub DESTROY
 {
 	# clean the desk!
-	my $unlock = $DB->prepare("UNLOCK TABLES") || die $DB->errstr;
-	$unlock->execute() || die $DB->errstr();
-	$DB->disconnect || die $DB->errstr;
 }
+
+
+sub lock {
+  my($this) = @_;
+  # LOCK the database!
+  my $lock = $DB->prepare("LOCK TABLES $table WRITE") || die $DB->errstr();
+  $lock->execute() || die $DB->errstr();
+}
+
+
+sub unlock {
+  my($this) = @_;
+  my $unlock = $DB->prepare("UNLOCK TABLES") || die $DB->errstr;
+  $unlock->execute() || die $DB->errstr();
+  $DB->disconnect || die $DB->errstr;
+}
+
 
 sub version {
 	return $version;
 }
 
-sub no_crypt {
-        $NOTEDB::crypt_supported = 0;
-}
 
-sub use_crypt {
-        my($this, $key, $method) = @_;
-        if($NOTEDB::crypt_supported == 1) {
-                eval {
-                        $cipher = new Crypt::CBC($key, $method);
-                };
-		if($@) {
-			$NOTEDB::crypt_supported == 0;
-		}
-        }
-        else{
-                print "warning: Crypt::CBC not supported by system!\n";
-        }
-}
-
-sub get_single 
-{
+sub get_single {
 	my($this, $num) = @_;
+
 	my($note, $date);
 	my $statement = $DB->prepare($sql_getsingle) || die $DB->errstr();
-	
+
 	$statement->execute($num) || die $DB->errstr();
 	$statement->bind_columns(undef, \($note, $date)) || die $DB->errstr();
 
@@ -114,7 +93,13 @@ sub get_single
 
 sub get_all
 {
-        my($this, $num, $note, $date, %res);
+        my $this = shift;
+        my($num, $note, $date, %res);
+
+	if ($this->unchanged) {
+	    return %{$this->{cache}};
+	}
+
         my $statement = $DB->prepare($sql_all) || die $DB->errstr();
 
         $statement->execute || die $DB->errstr();
@@ -124,6 +109,8 @@ sub get_all
                 $res{$num}->{'note'} = ude($note);
 		$res{$num}->{'date'} = ude($date);
         }
+
+        $this->cache(%res);
 	return %res;
 }
 
@@ -131,6 +118,14 @@ sub get_all
 sub get_nextnum
 {
 	my($this, $num);
+	if ($this->unchanged) {
+	    $num = 1;
+	    foreach (keys %{$this->{cache}}) {
+		$num++;
+	    }
+	    return $num;
+	}
+
 	my $statement = $DB->prepare($sql_nextnum) || die $DB->errstr();
 
 	$statement->execute || die $DB->errstr();
@@ -144,30 +139,35 @@ sub get_nextnum
 sub get_search
 {
 	my($this, $searchstring) = @_;
-	my($num, $note, $date, %res);
-	if($NOTEDB::crypt_supported != 1) {
-		$searchstring = "\%$searchstring\%";
-		my $statement = $DB->prepare($sql_search) || die $DB->errstr();
-		$statement->execute($searchstring) || die $DB->errstr();
-		$statement->bind_columns(undef, \($num, $note, $date)) 
-			|| die $DB->errstr();
-		while($statement->fetch) {
-			$res{$num}->{'note'} = $note;
-	                $res{$num}->{'date'} = $date;
-		}
+	my($num, $note, $date, %res, $match);
+
+	my $regex = $this->generate_search($searchstring);
+	eval $regex;
+	if ($@) {
+	  print "invalid expression: \"$searchstring\"!\n";
+	  return;
+	}
+	$match = 0;
+
+	my %data;
+	if ($this->unchanged) {
+	    %data = %{$this->{cache}};
 	}
 	else {
-		my %res = $this->get_all();
-		foreach $num (sort { $a <=> $b } keys %res) {
-			$note = ude($res{$num}->{'note'}); 
-                	$date = ude($res{$num}->{'date'});
-			if($note =~ /\Q$searchstring\E/i)
-                	{
-                        	$res{$num}->{'note'} = $note;
-                        	$res{$num}->{'date'} = $date;
-                	}
-		}
+	    %data = $this->get_all();
 	}
+	foreach $num (sort { $a <=> $b } keys %data) {
+	  $note = ude($data{$num}->{'note'});
+	  $date = ude($data{$num}->{'date'});
+	  $_ = $note;
+	  eval $regex;
+	  if($match) {
+	    $res{$num}->{'note'} = $note;
+	    $res{$num}->{'date'} = $date;
+	  }
+	  $match = 0;
+	}
+
 	return %res;
 }
 
@@ -177,24 +177,28 @@ sub get_search
 sub set_edit
 {
 	my($this, $num, $note, $date) = @_;
-	
+
+	$this->lock;
 	my $statement = $DB->prepare($sql_edit) || die $DB->errstr();
-	
 	$note =~ s/'/\'/g;
         $note =~ s/\\/\\\\/g;
 	$statement->execute(uen($note), uen($date), $num) || die $DB->errstr();
+	$this->unlock;
+	$this->changed;
 }
 
 
 sub set_new
 {
 	my($this, $num, $note, $date) = @_;
-
+	$this->lock;
 	my $statement = $DB->prepare($sql_insertnew) || die $DB->errstr();
 
 	$note =~ s/'/\'/g;
-	$note =~ s/\\/\\\\/g;	
+	$note =~ s/\\/\\\\/g;
 	$statement->execute($num, uen($note), uen($date)) || die $DB->errstr();
+	$this->unlock;
+	$this->changed;
 }
 
 
@@ -202,7 +206,8 @@ sub set_del
 {
         my($this, $num) = @_;
 	my($note, $date, $T);
-       
+
+	$this->lock;
 	($note, $date) = $this->get_single($num);
 
 	return "ERROR"  if ($date !~ /^\d/);
@@ -210,6 +215,8 @@ sub set_del
 	# delete record!
 	my $statement = $DB->prepare($sql_del) || die $DB->errstr();
 	$statement->execute($num) || die $DB->errstr();
+	$this->unlock;
+	$this->changed;
 	return;
 }
 
@@ -217,14 +224,19 @@ sub set_del
 sub set_del_all
 {
 	my($this) = @_;
+	$this->lock;
 	my $statement = $DB->prepare($sql_del_all) || die $DB->errstr();
 	$statement->execute() || die $DB->errstr();
+	$this->unlock;
+	$this->changed;
 	return;
 }
 
-sub set_recountnums
-{
+sub set_recountnums {
         my $this = shift;
+
+	$this->lock;
+
         my(@count, $i, $num, $setnum, $pos);
         $setnum = 1;
 	$pos=0; $i=0; @count = ();
@@ -237,13 +249,14 @@ sub set_recountnums
 		$count[$i] = $num;
 		$i++;
 	}
-       
 	# now recount them! 
 	my $sub_statement = $DB->prepare($sql_setnum) || die $DB->errstr();
 	for($pos=0;$pos<$i;$pos++) {
 		$setnum = $pos +1;
 		$sub_statement->execute($setnum,$count[$pos]) || die $DB->errstr();
 	}
+        $this->unlock;
+        $this->changed;
 }
 
 sub uen
@@ -287,7 +300,7 @@ NOTEDB::mysql - module lib for accessing a notedb from perl
 
 	# include the module
 	use NOTEDB;
-	
+
 	# create a new NOTEDB object (the last 4 params are db table/field names)
 	$db = new NOTEDB("mysql","note","localhost","username","password","note","number","note","date");
 

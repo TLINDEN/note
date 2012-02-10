@@ -1,26 +1,19 @@
 #!/usr/bin/perl
-# $Id: binary.pm,v 1.6 2000/06/25 19:48:00 scip Exp scip $
+# $Id: binary.pm,v 1.1.1.1 2000/07/01 14:40:52 zarahg Exp $
 # Perl module for note
 # binary database backend. see docu: perldoc NOTEDB::binary
 #
+package NOTEDB;
+
 use strict;
 use Data::Dumper;
 use IO::Seekable;
 
-package NOTEDB;
+use NOTEDB;
+
 use Fcntl qw(LOCK_EX LOCK_UN);
-BEGIN {
-	# make sure, it works, although encryption
-	# not supported on this system!
-	eval { require Crypt::CBC; };
-	if($@) {
-		$NOTEDB::crypt_supported = 0;
-	}
-	else {
-		$NOTEDB::crypt_supported = 1;
-	}
-}
-	
+
+
 # Globals:
 my ($NOTEDB, $sizeof, $typedef,$version);
 my ($cipher);
@@ -48,12 +41,12 @@ sub new
 	        exit(1);
 	}
 
-	
-	my $TYPEDEF = "i a$MAX_NOTE a$MAX_TIME";	
+	my $TYPEDEF = "i a$MAX_NOTE a$MAX_TIME";
 	my $SIZEOF  = length pack($TYPEDEF, () );
 
 	$sizeof = $SIZEOF;
 	$typedef = $TYPEDEF;
+
 	return $self;
 }
 
@@ -67,24 +60,7 @@ sub version {
         return $version;
 }
 
-sub no_crypt {
-	$NOTEDB::crypt_supported = 0;
-}
 
-sub use_crypt {
-	my($this,$key,$method) = @_;
-	if($NOTEDB::crypt_supported == 1) {
-		eval {
-			$cipher = new Crypt::CBC($key, $method);
-		};
-		if($@) {
-                        $NOTEDB::crypt_supported == 0;
-                }
-	}
-	else{
-		print "warning: Crypt::CBC not supported by system!\n";
-	}
-}
 
 sub set_del_all
 {
@@ -94,8 +70,7 @@ sub set_del_all
 }
 
 
-sub get_single 
-{
+sub get_single {
 	my($this, $num) = @_;
 	my($address, $note, $date, $buffer, $n, $t, $buffer, );
 
@@ -112,20 +87,24 @@ sub get_single
 
 	flock NOTE, LOCK_UN;
         close NOTE;
-	
+
 	return $note, $date;
 }
 
 
 sub get_all
 {
-        my($this, $num, $note, $date, %res);
+        my $this = shift;
+        my($num, $note, $date, %res);
 
+	if ($this->unchanged) {
+	    return %{$this->{cache}};
+	}
 	open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX; 
-	my($buffer, $t, $n);	
+        flock NOTE, LOCK_EX;
+	my($buffer, $t, $n);
 	seek(NOTE, 0, 0); # START FROM BEGINNING
-	while(read(NOTE, $buffer, $sizeof)) {        
+	while(read(NOTE, $buffer, $sizeof)) {
 		($num, $note, $date) = unpack($typedef, $buffer);
 		$t = ude($date);
                 $n = ude($note);
@@ -135,18 +114,27 @@ sub get_all
 	flock NOTE, LOCK_UN;
         close NOTE;
 
+	$this->cache(%res);
 	return %res;
 }
 
 
 sub get_nextnum
 {
-	my($this, $num, $te, $me, $buffer);
+        my $this = shift;
+	my($num, $te, $me, $buffer);
 
+	if ($this->unchanged) {
+	    $num = 1;
+	    foreach (keys %{$this->{cache}}) {
+		$num++;
+	    }
+	    return $num;
+	}
 	open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX; 
-	
-	seek(NOTE, 0, 0); # START FROM BEGINNING 
+        flock NOTE, LOCK_EX;
+
+	seek(NOTE, 0, 0); # START FROM BEGINNING
 	while(read(NOTE, $buffer, $sizeof)) {
 		($num, $te, $me) = unpack($typedef, $buffer);
 	}
@@ -160,10 +148,31 @@ sub get_nextnum
 sub get_search
 {
 	my($this, $searchstring) = @_;
-	my($buffer, $num, $note, $date, %res, $t, $n);
+	my($buffer, $num, $note, $date, %res, $t, $n, $match);
+
+	my $regex = $this->generate_search($searchstring);
+	eval $regex;
+	if ($@) {
+	  print "invalid expression: \"$searchstring\"!\n";
+	  return;
+	}
+	$match = 0;
+
+	if ($this->unchanged) {
+	    foreach my $num (keys %{$this->{cache}}) {
+		$_ = $this->{cache}{$num}->{note};
+		eval $regex;
+		if ($match) {
+		    $res{$num}->{note} = $this->{cache}{$num}->{note};
+		    $res{$num}->{date} = $this->{cache}{$num}->{date}
+		}
+		$match = 0;
+	    }
+	    return %res;
+	}
 
         open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX; 
+        flock NOTE, LOCK_EX;
 
 	seek(NOTE, 0, 0); # START FROM BEGINNING
 	while(read(NOTE, $buffer, $sizeof))
@@ -171,11 +180,14 @@ sub get_search
 		($num, $note, $date) = unpack($typedef, $buffer);
 		$n = ude($note);
                 $t = ude($date);
-                if($n =~ /\Q$searchstring\E/i)
+		$_ = $n;
+		eval $regex;
+                if($match)
                 {
 			$res{$num}->{'note'} = $n;
                 	$res{$num}->{'date'} = $t;
 		}
+		$match = 0;
 	}
         flock NOTE, LOCK_UN;
         close NOTE;
@@ -192,7 +204,7 @@ sub set_edit
 	my $address = ($num -1 ) * $sizeof;
 
         open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX; 
+        flock NOTE, LOCK_EX;
 
 	seek(NOTE, $address, IO::Seekable::SEEK_SET);
 	my $n = uen($note);
@@ -203,6 +215,8 @@ sub set_edit
 
         flock NOTE, LOCK_UN;
         close NOTE;
+
+	$this->changed;
 }
 
 
@@ -220,6 +234,8 @@ sub set_new
 
 	flock NOTE, LOCK_UN;
         close NOTE;
+
+	$this->changed;
 }
 
 
@@ -249,6 +265,9 @@ sub set_del
 	}
         flock NOTE, LOCK_UN;
         close NOTE;
+
+	$this->changed;
+
 	return;
 }
 
@@ -256,14 +275,14 @@ sub set_recountnums
 {
 	my($this) = @_;
 	my(%orig, $note, $date, $T, $setnum, $buffer, $n, $N, $t);
-	
+
 	$setnum = 1;
 	%orig = $this->get_all();
 
 	open NOTE, ">$NOTEDB" or die "could not open $NOTEDB\n";
 	flock NOTE, LOCK_EX;
 	seek(NOTE, 0, 0); # START FROM BEGINNING
-	
+
         foreach $N (sort {$a <=> $b} keys %orig) {
                 $n = uen($orig{$N}->{'note'});
                 $t = uen($orig{$N}->{'date'});
@@ -274,6 +293,9 @@ sub set_recountnums
         }
 	flock NOTE, LOCK_UN;
 	close NOTE;
+
+	$this->changed;
+
         return;
 }
 
@@ -306,6 +328,10 @@ sub ude
 	return $T;
 }
 
+
+
+
+
 1; # keep this!
 
 __END__
@@ -318,7 +344,7 @@ NOTEDB::binary - module lib for accessing a notedb from perl
 
 	# include the module
 	use NOTEDB;
-	
+
 	# create a new NOTEDB object
 	$db = new NOTEDB("binary", "/home/tom/.notedb", 4096, 24);
 

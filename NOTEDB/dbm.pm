@@ -1,25 +1,15 @@
 #!/usr/bin/perl
-# $Id: dbm.pm,v 1.2 2000/06/25 19:51:11 scip Exp scip $
+# $Id: dbm.pm,v 1.1.1.1 2000/07/01 14:40:52 zarahg Exp $
 # Perl module for note
 # DBM database backend. see docu: perldoc NOTEDB::dbm
 #
 
 use DB_File;
 #use Data::Dumper;
+use NOTEDB;
 use strict;
 package NOTEDB;
 
-BEGIN {
-        # make sure, it works, although encryption
-        # not supported on this system!
-        eval { require Crypt::CBC; };
-        if($@) {
-                $NOTEDB::crypt_supported = 0;
-        }
-        else {
-                $NOTEDB::crypt_supported = 1;
-        }
-}
 
 # Globals:
 my ($dbm_dir, $notefile, $timefile, $version, $cipher, %note, %date);
@@ -50,25 +40,6 @@ sub DESTROY
 
 sub version {
         return $version;
-}
-
-sub no_crypt {
-        $NOTEDB::crypt_supported = 0;
-}
-
-sub use_crypt {
-        my($this, $key, $method) = @_;
-        if($NOTEDB::crypt_supported == 1) {
-                eval {
-                        $cipher = new Crypt::CBC($key, $method);
-                };
-                if($@) {
-                        $NOTEDB::crypt_supported == 0;
-                }
-        }
-        else{
-                print "warning: Crypt::CBC not supported by system!\n";
-        }
 }
 
 
@@ -104,13 +75,23 @@ sub get_nextnum
 sub get_search
 {
 	my($this, $searchstring) = @_;
-	my($num, $note, $date, %res);
+	my($num, $note, $date, %res, $match);
 
+        my $regex = $this->generate_search($searchstring);
+	eval $regex;
+	if ($@) {
+	  print "invalid expression: \"$searchstring\"!\n";
+	  return;
+	}
+	$match = 0;
 	foreach $num (sort {$a <=> $b} keys %date) {
-	  if (ude($note{$num}) =~ /\Q$searchstring\E/i) {
+	  $_ = ude($note{$num});
+	  eval $regex;
+	  if ($match) {
                 $res{$num}->{'note'} = ude($note{$num});
 		$res{$num}->{'date'} = ude($date{$num});
 	  }
+	  $match = 0;
 	}
 
 	return %res;
@@ -195,6 +176,8 @@ sub ude
                 return $_[0];
         }
 }
+
+
 
 1; # keep this!
 

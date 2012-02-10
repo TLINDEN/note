@@ -2,7 +2,7 @@
 # NOTEDB::mysql and NOTEDB::binary are internals
 # of note.
 #
-# $Id: Makefile.PL,v 1.1 2000/04/17 17:38:49 thomas Exp thomas $
+# $Id: Makefile.PL,v 1.1.1.1 2000/07/01 14:40:50 zarahg Exp $
 # 
 # check for the existence of optional modules:
 sub chk_mod
@@ -86,17 +86,22 @@ $install = `which install`;
 
 open M, "> Makefile" || die $!;
 print M qq~BIN = bin/note
+MAN = note.1
 LIBS = NOTEDB/mysql.pm NOTEDB/binary.pm NOTEDB/dbm.pm
+CORE = NOTEDB.pm
 INSTBIN = $BINDIR
 INSTLIB = $LIBDIR
+INSTMAN = /usr/man/man1
 INSTALL = $install
 all:
 	\@echo "done. Type make install.\\n"
 
 install:
+	\$(INSTALL) -m 755 \$(CORE) \$(INSTLIB)
 	\$(INSTALL) -d -m 755 \$(INSTLIB)/NOTEDB
 	\$(INSTALL) -m 755 \$(LIBS) \$(INSTLIB)/NOTEDB
 	\$(INSTALL) -m 755 \$(BIN) \$(INSTBIN)
+	\$(INSTALL) -m 644 \$(MAN) \$(INSTMAN)
 ~;
 
 print "Type \"make install\" to install all files.\n\n";
