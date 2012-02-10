@@ -1,4 +1,13 @@
 ================================================================================
+1.2.3:
+ADDED:		if FormatText is enabled one can now use a new special format
+		tag: //. If a text is surrounded by two slashes, i.e.: //blah//
+		then it appears "invisible" by using blue forground and blue
+		background color for displaying. This is handy for passwords
+		since no nobody can grab you password by looking at your
+		monitor, but you can copy&paste it.
+
+================================================================================
 1.2.2:
 FIXED:		oneliner note entries caused breaked displaying in interactive
 		mode.

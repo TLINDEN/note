@@ -447,10 +447,12 @@ character. Here are the available things, you can do:
  bold:     **word**
  underlined:__word__
  inverse:{{word}}
+ hidden: //word//
 
 The text will be formatted using the actually note-color.
 
-
+The hidden formatting will use blue forground and blue background
+to hide a string from the terminal, which is usefull for passwords.
 
 =head1 ENCRYPTION
 
@@ -503,6 +505,6 @@ Thomas Linden <tom@daemon.de>
 
 =head1 VERSION
 
-1.2.2 (04/03/2003)
+1.2.3 (08/03/2003)
 
 =cut

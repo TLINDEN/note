@@ -126,7 +126,7 @@ $TIME_COLOR   	= "blue";
 $TOPIC_COLOR 	= "bold";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.2.2";
+$version 	= "1.2.3";
 if ($TOPIC) {
   $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 }
@@ -178,6 +178,7 @@ $AUTO_CLEAR     = "YES";
                       'whiteI'        => '7;37',
                       'white_black'   => '40;37;01',
                       'bold'          => ';01',
+		      'hide'          => '44;34'
              );
 
 #
@@ -1181,18 +1182,22 @@ sub format {
   # make text bold/underlined/inverse using current $NOTEC
   my($note) = @_;
   if ($FormatText) {
-    my $BN = uc($NOTEC);
+    # prepare colors to be used for replacement
+    my $BN  = uc($NOTEC);
     my $_BN = uc($_NOTEC);
     my $UN  = $NOTEC;
-    $UN =~ s/<(.*)>/<$1_>/;
+    $UN     =~ s/<(.*)>/<$1_>/;
     my $_UN = $UN;
-    $_UN =~ s/<(.*)>/<\/$1>/;
-    my $IN = $NOTEC; my $_IN = $_NOTEC;
-    $IN =~ s/<(.*)>/<$1I>/;
-    $_IN =~ s/<(.*)>/<$1I>/;
+    $_UN    =~ s/<(.*)>/<\/$1>/;
+    my $IN  = $NOTEC;
+    my $_IN = $_NOTEC;
+    $IN     =~ s/<(.*)>/<$1I>/;
+    $_IN    =~ s/<(.*)>/<$1I>/;
+
     $note =~ s/\*\*([^\*^\*]*)\*\*/$BN$1$_BN/g;
     $note =~ s/__([^_^_]*)__/$UN$1$_UN/g;
     $note =~ s/{{([^}^}]*)}}/$IN$1$_IN/g;
+    $note =~ s#//([^/^/]*)//#<hide>$1</hide>#g;
   }
   $note =~ s/(<\/.*>)/$1$NOTEC/g;
   $note;
