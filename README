@@ -1,4 +1,4 @@
-note 1.0.5 by Thomas Linden, 14/05/2000
+note 1.0.6 by Thomas Linden, 18/05/2000
 =======================================
 
 Introduction
@@ -292,6 +292,36 @@ Topics
 
 
 
+
+Formatting of notes
+===================
+
+	Another very nice feature is the possibility to format the note-text (as much as
+	shell allows it). First, you can use the note-internal "magic-strings" for color-
+	izing. Those strings looks much like HTML:
+		"<green>here is a green line of text</green> no more green."
+	As you see, the beginning of another color starts with a tag(kinda) of the color
+	<colorname> and ens with an end tag </colorname>.
+
+	The following colors are available:
+		black, red, green, yellow, blue, magenta, cyan and white.
+
+	Beside colorizing text, you can also create bold or underlined text! If you decide
+	to use this (additional) feature, you need to set the Config-Option "FormatNotes"
+	to 1 which turns it on.
+	Usage is very straightforward, if a word (a word is defined as some text with at least
+	one space surrounded) is between a magic mark-character. Here are the available
+	things, you can do:
+
+		bold:	     	**word**
+		underlined:	__word__
+		inverse:	{{word}}
+
+	The text will be formatted using the actually note-color.
+
+
+
+
 Scripting
 =========
 
@@ -326,8 +356,8 @@ Scripting
 Format of the notedb (binary backend)
 =====================================
 
-	The database where the notes are stored is a binary file of
-	the following format:
+	The database where the notes are stored is a binary fixed record length file 
+	of the following format:
 	It consists of three fixed length fields per entry. The fields
 	have the following types:
 		o Number: Integer (1 byte)
@@ -484,4 +514,4 @@ Contributors / Credits
 Last changed
 ============
 
-	14/05/2000	
+	18/05/2000	

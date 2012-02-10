@@ -1,5 +1,21 @@
 ==================================================================================
 
+1.0.6:
+FIXED:		there were some odd bugs in commandline parsing, some options were unavailable.
+FIXED:		Forgot "PreferredEditor" config-option in the new config format.
+FIXED:		the interactive "cd .." command has ignored the presence of a 
+		"DefaultLong" setting(and search too)... thx to Peter.
+CHANGED:	Optimized a little bit the output routine, now it is better to read.
+ADDED:		sub format and appropriate config-option for text formatting capabilities.
+CHANGED:	changed getconfig regexp, which allows now also to use Option = Param.
+FIXED:		was not possible to override config-options, which are set by default to
+		something.
+ADDED:		note chacks now, if a database os actually really encrypted and exits with
+		an error if it s and the user turned off encryption. This protects her from
+		destroying it's own database ..
+
+==================================================================================
+
 1.0.5:
 FIXED:		the T (and t respectively) printed nothing out since 1.0.3! It does
 		it now again...

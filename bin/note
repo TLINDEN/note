@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: note,v 1.26 2000/05/13 01:05:17 thomas Exp thomas $
+# $Id: note,v 1.27 2000/05/16 23:51:35 thomas Exp thomas $
 # 
 #
 # note - console notes management with database and encryption support.
@@ -71,7 +71,7 @@ my (
 	# options from config file .noterc
 	#
         $maxlen, $timelen, $TOPIC, $NOTEDB, $MAX_TIME, $PreferredEditor,
-	$ALWAYS_INT, $KEEP_TIMESTAMP, $COLOR, $ALWAYS_EDIT, $HOME,
+	$ALWAYS_INT, $KEEP_TIMESTAMP, $COLOR, $ALWAYS_EDIT, $HOME, $FormatText,
 	$BORDER_COLOR, $NOTE_COLOR, $NUM_COLOR, $TOPIC_COLOR, $MAX_NOTE,
 	$USE_CRYPT, $CRYPT_METHOD, $TopicSep, $DEFAULT_LIST, $TIME_COLOR,
 
@@ -126,7 +126,7 @@ $TIME_COLOR   	= "black";
 $TOPIC_COLOR 	= "BLACK";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.0.5";
+$version 	= "1.0.6";
 if($TOPIC)
 {
     $CurDepth 	= 1; # the current depth inside the topic "directory" structure...
@@ -159,11 +159,11 @@ else
 	"delete|d=s"	 => \$opt_d,	# integer, required
 	"search|s=s"	 => \$opt_s,	# string,  required
 	"tree|topic|t!"	 => \$opt_t,	# no arg
-	"long_tree|T!"	 => \$opt_T,	# no arg
+	"longtopic|T!"	 => \$opt_T,	# no arg
 	"list|l:s"	 => \$opt_l,	# string,  optional
-	"long_list|L:s"	 => \$opt_L,	# string,  optional
-	"dump|D:s"	 => \$opt_D,	# string,  optional
-	"import|I:s"	 => \$opt_I,	# string,  optional
+	"longlist|L:s"	 => \$opt_L,	# string,  optional
+	"dump||Dump|D:s"	 => \$opt_D,	# string,  optional
+	"import|Import|I:s"	 => \$opt_I,	# string,  optional
 	"overwrite|o!"	 => \$opt_o,	# no arg
 	"help|h|?!"	 => \$opt_h,	# no arg	
 	"version|v!"	 => \$opt_v	# no arg
@@ -349,7 +349,7 @@ $NoteKey  = $TopicSep . "notes" . $TopicSep;
 
 if($ListType ne "LONG" && $mode ne "interactive")
 {
-     $maxlen += $timelen; # no time will be displayed!
+     #$maxlen += $timelen; # no time will be displayed!
 }
 
 
@@ -381,9 +381,9 @@ if($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
 	$db->use_crypt($key,$CRYPT_METHOD);
 	undef $key;
 	# verify correctness of passwd
-	my ($note, $date) = $db->get_single(1);	
-	if($date ne "") {
-		if($date !~ /^\d+\.\d+?/) {
+	my ($cnote, $cdate) = $db->get_single(1);
+	if($cdate ne "") {
+		if($cdate !~ /^\d+\.\d+?/) {
 			print "access denied.\n"; # decrypted $date is not a number!
 			exit(1);
 		}
@@ -391,7 +391,14 @@ if($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
 }
 else {
 	$db->no_crypt;
-	# does: NOTEDB::crypt_supported = 0;
+        # does: NOTEDB::crypt_supported = 0;
+	my ($cnote, $cdate) = $db->get_single(1);
+	if($cdate ne "") {
+		if($cdate !~ /^\d+\.\d+?/) {
+			print "$NOTEDB seems to be encrypted!\n";
+			exit(1);
+		}
+	}
 }
 
 # main loop: ###############
@@ -477,7 +484,6 @@ sub display
 sub search
 {
     	my($n,$match,$note,$date,$num,%res);
-	$maxlen += $timelen;
 	if($searchstring eq "")
 	{
 		print "No searchstring specified!\n";
@@ -507,8 +513,11 @@ sub list
 	my(@topic,@RealTopic, $i,$t,$n,$num,@CurItem,$top,$in,%res);
 	if($mode ne "interactive" && !$Raw)
         {
-                print "List of all existing notes:\n\n";
+                print "\nList of all existing notes:\n\n";
         }
+	else {
+		print "\n";
+	}
 
 	# list all available notes (number and firstline)
 	%res = $db->get_all();
@@ -858,9 +867,8 @@ sub import
 
 sub interactive
 {
-        my($maxlen_save, $B, $BB, $menu, $char, @LastTopic, $Channel);
+        my($B, $BB, $menu, $char, @LastTopic, $Channel);
 	$Channel = $|;
-	$maxlen_save = $maxlen;
 	# create menu:
 	$B = "<blackI>";
 	$BB = "</blackI>";
@@ -876,14 +884,13 @@ sub interactive
 		. $B . "Q" . $BB . "-Quit] "; # $CurTopic will be empty if $TOPIC is off!
 	# per default let's list all the stuff:
 	# Initially do a list command!
-	$maxlen += $timelen if($DEFAULT_LIST ne "LONG");
-	print "\n";
+	$ListType = ($DEFAULT_LIST eq "LONG") ? "LONG" : "";
 	&list;
-	undef $SetTitle;
+	
 	for(;;)
 	{
-		$ListType = "";
-		$maxlen = $maxlen_save;
+		$ListType = ($DEFAULT_LIST eq "LONG") ? "LONG" : "";
+		undef $SetTitle;
 		if($CurDepth > 2)
                 {
                     print C $menu . $TOPICC . "../" . $CurTopic . $_TOPICC . ">";
@@ -899,35 +906,28 @@ sub interactive
 		chomp $char;
 		if($char =~ /^\d+\s*[\di*?,*?\-*?]*$/)
 		{
+			$ListType = ""; #overrun
 			# display notes
-			$maxlen += $timelen;
 			$number = $char;
 			&display;
-			undef $SetTitle;
 		}
 		elsif($char =~ /^n$/i)
 		{
 			# create a new one
 			&new;
 		}
-		elsif($char =~ /^l$/ || $char =~ /^$/)
+		elsif($char =~ /^$/)
 		{
-			# list
-			print "\n";
-			if($DEFAULT_LIST eq "LONG" && $char =~ /^$/) {
-				$ListType = "LONG";
-			}
-			else {
-				$ListType = "";
-				$maxlen += $timelen;
-			}
 			&list;
-			undef $SetTitle;
+		}
+		elsif($char =~ /^l$/)
+		{
+			$ListType = "";
+			&list;
 		}
 		elsif($char =~ /^L$/)
 		{
 			$ListType = "LONG";
-			print "\n";
 			&list;
 			undef $SetTitle;
 		}
@@ -1005,10 +1005,7 @@ sub interactive
                 {
 			$CurDepth-- if ($CurDepth > 1);
                         $CurTopic = $LastTopic[$CurDepth];
-                        $maxlen += $timelen;
-                        print "\n";
                         &list;
-                        undef $SetTitle;
                 }
 		elsif($char =~ /^l\s+(\w+)$/)
                 {
@@ -1020,11 +1017,9 @@ sub interactive
 				$LastTopic[$CurDepth] = $CurTopic;
 				$CurTopic = $1;
 				$CurDepth++;
-                        	print "\n";
-                        	$ListType = "";
-                        	$maxlen += $timelen;
-                        	&list;
-                        	undef $SetTitle;
+                        	
+				&list;
+				
 				$CurTopic = $LastTopic[$CurDepth];
 				$CurDepth--;
 				%TP = %SaveTP;
@@ -1044,11 +1039,8 @@ sub interactive
 			        $char = $unchar if(exists $TP{$unchar});
                                 $LastTopic[$CurDepth] = $CurTopic;
                                 $CurTopic = $char;
-                                $maxlen += $timelen;
                                 $CurDepth++;
-                                print "\n";
                                 &list;
-                                undef $SetTitle;
                         }
                         else
                         {
@@ -1111,23 +1103,49 @@ Options:
   #print "called from line $line\n";
   exit 1;
 }
+
 sub find_editor {
    return $PreferredEditor || $ENV{"VISUAL"} || $ENV{"EDITOR"} || "vim" || "vi" || "pico";
 }
+
 #/
+
+sub format {
+	# make text bold/underlined/inverse using current $NOTEC
+	# s/\[([^]]*)\]/$param{$1}/g;
+	my($note) = @_;
+        if($FormatText) {
+                my $BN = uc($NOTEC);
+                my $_BN = uc($_NOTEC);
+		my $UN  = $NOTEC;
+		$UN =~ s/<(.*)>/<$1_>/;
+		my $_UN = $UN;
+		$_UN =~ s/<(.*)>/<\/$1>/;
+		my $IN = $NOTEC; my $_IN = $_NOTEC;
+		$IN =~ s/<(.*)>/<$1I>/;
+		$_IN =~ s/<(.*)>/<$1I>/;
+                #$note =~ s/ (\*)(.+)(\*) / $BN$2$_BN /g;
+                #$note =~ s/ (_)(.+)(_) / $UN$2$_UN /g;
+                #$note =~ s/ (\/)(.+)(\/) / $IN$2$_IN /g;
+		$note =~ s/\*\*([^\*^\*]*)\*\*/$BN$1$_BN/g;
+		$note =~ s/__([^_^_]*)__/$UN$1$_UN/g;
+		$note =~ s/{{([^}^}]*)}}/$IN$1$_IN/g;
+        }
+	$note =~ s/(<\/.*>)/$1$NOTEC/g;
+	$note;
+}
+
 sub output
 {
 	my($SSS, $LINE, $num, $note, $time, $TYPE, $L, $LONGSPC, $R, $PathLen, $SP, $title, $CUTSPACE,
-	       $len, $diff, $Space, $nlen);
+	       $len, $diff, $Space, $nlen, $txtlen);
 	($num, $note, $time, $TYPE) = @_;
-	if($ListType ne "LONG")
-	{
-		$SSS = "-" x ($maxlen + 31 - $timelen);
-	}
-	else
-	{
-		$SSS = "-" x ($maxlen + 31);
-	}
+	$txtlen = ($ListType eq "LONG") ? $maxlen : $timelen + $maxlen;
+	
+	$note = &format($note);
+
+	$SSS = "-" x ($maxlen + 31);
+	
 	$nlen = length("$num");
 	$LINE = "$BORDERC $SSS $_BORDERC\n";
 	$L = $BORDERC . "[" . $_BORDERC;
@@ -1140,14 +1158,7 @@ sub output
 		{
 			$SP = "";
 			# print only if it is the first line!
-			if($ListType ne "LONG")
-			{
-				$SP = " " x ($maxlen-2 - $timelen - $PathLen);
-                	}
-			else
-			{
-				$SP = " " x ($maxlen-2 - $PathLen);
-			}
+			$SP = " " x ($maxlen - 2 - $PathLen);
 			if(!$Raw) { 
 				# no title in raw-mode!
 				print C $LINE;
@@ -1175,12 +1186,12 @@ sub output
 			$SetTitle = 1;
 		}
 		$title = "";
-		$CUTSPACE = " " x $maxlen;
+		$CUTSPACE = " " x $txtlen;
 		$note =~ s/\n/$CUTSPACE/g;
         	$len   = length($note);
-        	if($len < ($maxlen - 2 - $nlen))
+        	if($len < ($txtlen - 2 - $nlen))
         	{
-        	    $diff = $maxlen - $len;
+        	    $diff = $txtlen - $len;
 		    $Space = " " x $diff;	
 		    if(!$Raw) {
                       if($num eq "-")
@@ -1198,7 +1209,7 @@ sub output
         	}
 		else
         	{
-        	        $title = substr($note,0,($maxlen - 2 - $nlen));
+        	        $title = substr($note,0,($txtlen - 2 - $nlen));
 			if(!$Raw) {
         	        	$title = $BORDERC . $NOTEC . "\"" . $title . "...\"$_NOTEC$_BORDERC";
         		}
@@ -1226,10 +1237,7 @@ sub output
 	{
 		# we will not reach this in raw-mode, therefore no decision here!
 		chomp $note;
-		$Space = " " x ($maxlen - 16);
-		$SP = " " x ($maxlen + 13);
-		#print C $LINE;
-		#print C "$L $NUMC#$_NUMC   " . $TIMEC . "creation date$_TIMEC$SP$R\n";
+		$Space = " " x (($maxlen + $timelen) - 16);
 		print C $LINE;
 		print C "$L $NUMC$num$_NUMC $R$L$TIMEC$time$_TIMEC $Space$R\n";
 		print C $LINE;
@@ -1496,7 +1504,7 @@ sub getconfig
 	while(<CONFIG>) {
 		chomp;
 		next if(/^\s*$/ || /^\s*#/);
-		my ($option,$value) = split /\s\s*/, $_, 2;
+		my ($option,$value) = split /\s\s*=?\s*/, $_, 2;
 		$value 		=~ s/\s*$//;
 		$home 		= $value if (/^Home/);
 		$libpath 	= $value if (/^LibPath/);
@@ -1512,23 +1520,31 @@ sub getconfig
 		$NOTEDB 	= $value if (/^NoteDb/);
 		$MAX_NOTE 	= $value if (/^MaxNoteByte/);
 		$MAX_TIME 	= $value if (/^MaxTimeByte/);
+		$CRYPT_METHOD   = $value if (/^CryptMethod/);
 		$USE_CRYPT 	= "YES" if (/^UseEncryption/ && $value == 1);
-		$CRYPT_METHOD 	= $value if (/^CryptMethod/);
+		$USE_CRYPT 	= undef if (/^UseEncryption/ && $value == 0);
 		$ALWAYS_INT 	= "YES" if (/^AlwaysInteractive/ && $value == 1);
+		$ALWAYS_INT 	= undef if (/^AlwaysInteractive/ && $value == 0);
 		$DEFAULT_LIST 	= "LONG" if (/^DefaultLong/ && $value == 1);
+		$DEFAULT_LIST 	= undef if (/^DefaultLong/ && $value == 0);
 		$ALWAYS_EDIT 	= "YES" if (/^AlwaysEditor/ && $value == 1);
+		$ALWAYS_EDIT 	= undef if (/^AlwaysEditor/ && $value == 0);
 		$KEEP_TIMESTAMP = "YES" if (/^KeepTimeStamp/ && $value == 1);
+		$KEEP_TIMESTAMP = undef if (/^KeepTimeStamp/ && $value == 0);
+		$COLOR          = "YES" if (/^UseColors/ && $value == 1);
+		$COLOR    	= "NO"  if (/^UseColors/ && $value == 0);
 		$TopicSep 	= $value if (/^TopicSeparator/);
 		$maxlen 	= $value if (/^MaxLen/);
-		$COLOR 		= "YES" if (/^UseColors/ && $value == 1);
 		$BORDER_COLOR 	= $value if (/^BorderColor/);
 		$NUM_COLOR 	= $value if (/^NumberColor/);
 		$NOTE_COLOR 	= $value if(/^NoteColor/);
 		$TIME_COLOR 	= $value if (/^TimeColor/);
 		$TOPIC_COLOR	 = $value if (/^TopicColor/);
+		$PreferredEditor = $value if (/^PreferredEditor/);
+		$FormatText      = $value if (/^FormatText/);
 	}
 	chomp $home;
-	$home =~ s/\/*$//;
+	$home =~ s/\/*$//; # cut eventually / at the end
 	$HOME = eval($home);
 	if($NOTEDB =~ /^(~\/)(.*)$/) {
 		$NOTEDB = "/home/" . $USER . "/" . $2;
@@ -1544,6 +1560,9 @@ sub getconfig
 __END__
 #
 # $Log: note,v $
+# Revision 1.27  2000/05/16 23:51:35  thomas
+# fixed many option-parsing related bugd!
+#
 # Revision 1.26  2000/05/13 01:05:17  thomas
 # changed config format and fixed some bugs
 # as well as some other additions...
