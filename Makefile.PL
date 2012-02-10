@@ -11,6 +11,7 @@ sub chk_mod
 	print "<====\tchecking $mod \t====>\n";
 	eval {
 		$mod .= ".pm";
+		$mod =~ s/::/\//g;
 		require $mod;
 	};
 	if($@) {

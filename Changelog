@@ -1,5 +1,24 @@
 ==================================================================================
 
+1.0.3:
+ADDED:		"-" works also for --dump, but in the other direction. It causes
+		note to dump to standard output instead into a file.
+ADDED:		you can specify - as filename for use with --import and if you want
+		to create a new note. "-" stands for standardinput and it allows you
+		tp pipe another commands output to note!
+ADDED:		you can now use an environment variable for the passphrase (when using
+		encryption). If it is presen, note will not ask for a passphrase. This
+		is very usefull in comination with the addition above, for use in 
+		scripts.
+CHANGED:	the interactive help screen is now coloured.
+ADDED:		-o commandline switch, which causes note to overwrite an existing
+		database when importing data from a previous dump. Very handy if
+		you want to re-initialize your db, i.e. if you changed the format.
+ADDED:		the long-tree-view (-T) displays now also the note-number of each
+		note.
+
+==================================================================================
+
 1.0.2:
 ADDED:		Topic-Tree overview command (-t or -T).
 ADDED:		Enhanced list command in interactive mode, you can now specify

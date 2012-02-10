@@ -43,6 +43,7 @@ my $sql_edit		= "UPDATE $table SET $fnote = ?, $fdate = ? WHERE $fnum = ?";
 my $sql_insertnew	= "INSERT INTO $table VALUES (?, ?, ?)";
 
 my $sql_del		= "DELETE FROM $table WHERE $fnum = ?";
+my $sql_del_all		= "DELETE FROM $table"; 
 ######################################################################################################
 
 sub new
@@ -212,6 +213,14 @@ sub set_del
 	return;
 }
 
+
+sub set_del_all
+{
+	my($this) = @_;
+	my $statement = $DB->prepare($sql_del_all) || die $DB->errstr();
+	$statement->execute() || die $DB->errstr();
+	return;
+}
 
 sub set_recountnums
 {

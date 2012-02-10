@@ -1,4 +1,4 @@
-note 1.0.2 by Thomas Linden, 01/05/2000
+note 1.0.3 by Thomas Linden, 02/05/2000
 
 
 Introduction
@@ -87,7 +87,8 @@ Usage
 
 	To create a new note, simply run "note". You can enter
 	the note (the length is by default limited to 4096 bytes,
-	which you can change from your config file).
+	which you can change from your config file if you are using
+	the binary backend, therwise there is no limitation).
 	End by typing a . on a line itself. note will tell you the 
 	number of the note.
 
@@ -108,7 +109,7 @@ Usage
 	strcture. You can use the command "-t" in this case, which
 	will display a tree-view of your tpic-structure. You can
 	use the command "-T" if you want to see the notes under each
-	topic too.
+	topic too. "-T" will also show the number of each note.
 
 	To edit a certain note, type "note -e 1". It will invoke your
 	editor (vi or pico). You can edit it, after saving, note
@@ -142,6 +143,22 @@ Usage
 	your note-dump form your office to home and import it there
 	for further use).
 	The dumps from the two versions of note are in the same format.
+	Using dumps it is also possible to reinitialize your database. You
+	can use the "-o" switch whcih causes note to overwrite your existing 
+	database. This is very handy if you changed heavily your config. And 
+	it is required, if you changed: encryption, db-driver, (binary-format)
+	and the password. You can use the following command for reinitializing:
+		$ note -D - | note -o -I -
+	What the hell, does it?! Step by step:
+		o "note -D -" creates a note-database dump and prints it out
+		  to stantdard output.
+		o "|" this is the shell's pipe command. It does take the output
+		  of the left program and gives it to the right progrem as standard
+		  input.
+		o "note -o -I -" imports a note-database dump from standard input
+		  and overwrites an existing database.
+	Before you use the "-o" switch, I consider yuo to make a backup!
+
 
 
 
@@ -214,6 +231,32 @@ Topics
 	Note: 	Please don't forget the prepending and appending a slash of a topic. 
 		You will get strange results without it!
 
+
+
+Scripting
+=========
+
+	Since version 1.0.3 there are some additions which allows you to use note in 
+	scripts, without user-interaction. You might run a special script as cronjob,
+	which adds a note under a certain topic every week. Or the like.
+
+	Here are the possibilies you have:
+	
+	You can add a new note through a pipe, another commands output becomes
+	note's input:
+		$ cat /var/spool/news/daily | note -
+	This command adds the content of a file "daily" as a new note. Note the dash.
+	it stands for "Standard Input". Note will be completely silent and it will not 
+	ask for something.
+
+	Suppose you are using encryption. You might wonder, how note will get your 
+	passphrase? The solution: You need to set up an environment variable which 
+	contains the password:
+		$ export NOTE_PASSWD=secret
+	If the variable is present, note will not ask you for a passphrase! 
+		
+
+	
 
 
 Format of the notedb (binary backend)
@@ -311,6 +354,8 @@ Security
 	the file UPGRADE and follow it's directions!
 	Someday I will add a "change passwd" function, which will do all
 	these things for you. Someday, I said...
+	For now you can use the "re-initialze database" functionality, mentioned
+	earlier in the "Usage" section (at the end of the section).
 	
 	Note: To make sure, the encrypted data can be stored properly,
 	      it will be uuencoded after encryption.
@@ -321,6 +366,15 @@ Security
 	      the phrase, then the data can't be decrypted. Even if it
 	      is possible - I am not responsible for that!
 	
+	Note: How does note know, if the passphrase was incorrect? It uses the
+	      specified phrase and encodes at least one note (the first one)
+	      and checks if the decrypted timestamp field matches the following
+	      expression: "^\d+\.\d+". Translated from perl to human:
+	      the timestamp must begin with minimum one digit (possibly more),
+	      followed by one dot, followed by minimum one digit (possibly more).
+	      Chances are bad, that a wrong passphrase will cause a timestamp
+	      matching the rule above. If you have other experiences, please
+	      drop me a mail!	
 
 
 Comments
@@ -353,4 +407,4 @@ Author and Copyright
 Last changed
 ============
 
-	18/04/2000	
+	02/05/2000	

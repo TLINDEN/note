@@ -86,6 +86,14 @@ sub use_crypt {
 	}
 }
 
+sub set_del_all
+{
+	unlink $NOTEDB;
+	open(TT,">$NOTEDB") or die "Could not create $NOTEDB: $!\n";
+	close (TT);
+}
+
+
 sub get_single 
 {
 	my($this, $num) = @_;

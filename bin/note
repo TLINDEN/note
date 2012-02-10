@@ -1,7 +1,16 @@
 #!/usr/bin/perl
-# $Author: thomas $ $Id: note,v 1.19 2000/04/30 16:07:23 thomas Exp thomas $ $Revision: 1.19 $
+# $Author: thomas $ $Id: note,v 1.22 2000/05/01 18:51:40 thomas Exp thomas $ $Revision: 1.22 $
 # 
 # $Log: note,v $
+# Revision 1.22  2000/05/01 18:51:40  thomas
+# added "-" to sub dump
+#
+# Revision 1.21  2000/05/01 00:17:27  thomas
+# *** empty log message ***
+#
+# Revision 1.20  2000/04/30 23:31:38  thomas
+# added -o and coloured sub help.
+#
 # Revision 1.19  2000/04/30 16:07:23  thomas
 # *** empty log message ***
 #
@@ -97,9 +106,10 @@ sub help;
 sub import;
 sub display_tree;
 sub tree;
+sub print_tree;
 
 my (
-        $maxlen, $timelen, $TOPIC, $TYPE, $mode, $NOTEDB, $NoteKey, 
+        $maxlen, $timelen, $TOPIC, $TYPE, $mode, $NOTEDB, $NoteKey, $ImportType, $NewType,
         $version, $number, $CurTopic, $CurDepth, $PATH, $CONF, $WantTopic,
         $sizeof, $MAX_TIME, $PreferredEditor, %TP, $TopicSep,
         $TreeType, $ListType, $searchstring, $dump_file, $ALWAYS_INT, $KEEP_TIMESTAMP,
@@ -136,7 +146,7 @@ $TIME_COLOR   = "black";
 $TOPIC_COLOR = "BLACK";
 $TOPIC = 1;
 $TopicSep = '/';
-$version = "1.0.2";
+$version = "1.0.3";
 if($TOPIC)
 {
     $CurDepth = 1; # the current depth inside the topic "directory" structure...
@@ -165,6 +175,12 @@ else
                 }
                 $ARGV[0] = "";
         }
+	elsif($ARGV[0] eq "-")
+	{
+		$NewType = 1;
+		$mode = "new";
+		$ARGV[0] = "";
+	}
 	elsif($ARGV[0] eq "-i" || $ARGV[0] eq "--interactive")
 	{
 		$mode = "interactive";
@@ -241,10 +257,35 @@ else
 			print "no dumpfile specified, using $dump_file.\n";
 		}
 	}
+        elsif($ARGV[0] eq "-o" || $ARGV[0] eq "--overwrite")
+        {
+                $mode = "import";
+		$ImportType = $ARGV[0];
+                if($ARGV[1] eq "-I" || $ARGV[1] eq "--Import") {
+                        $dump_file = $ARGV[2];
+                }
+                else {
+			print "--overwrite is only suitable for use with --import!\n";
+			exit(1);
+                }
+                $ARGV[0] = "";
+                if($dump_file eq "")
+                {
+                        print "No dumpfile specified.\n";
+                        exit(1);
+                }
+        }
 	elsif($ARGV[0] eq "-I" || $ARGV[0] eq "--Import" || $ARGV[0] eq "--import")
         {
                 $mode = "import";
-                $dump_file = $ARGV[1];
+		if($ARGV[1] eq "-o" || $ARGV[1] eq "-overwrite") {
+                	$dump_file = $ARGV[2];
+			$ImportType = $ARGV[1];
+		}
+		else {
+			$dump_file = $ARGV[1];
+			$ImportType = $ARGV[2];
+		}
                 $ARGV[0] = "";
                 if($dump_file eq "")
                 {
@@ -340,19 +381,24 @@ if($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
 	if($CRYPT_METHOD eq "") {
 		$CRYPT_METHOD = "Crypt::IDEA";
 	}
-	print "password: ";
-	eval {
-	    local($|) = 1;
-	    local(*TTY);
-	    open(TTY,"/dev/tty");
-	    system ("stty -echo </dev/tty");
-	    chomp($key = <TTY>);
-	    print STDERR "\r\n";
-	    system ("stty echo </dev/tty");
-	    close(TTY);
-	};
-	if($@) {
-		$key = <>;
+	if(!exists $ENV{'NOTE_PASSWD'}) {
+		print "password: ";
+		eval {
+		    local($|) = 1;
+		    local(*TTY);
+		    open(TTY,"/dev/tty");
+		    system ("stty -echo </dev/tty");
+		    chomp($key = <TTY>);
+		    print STDERR "\r\n";
+		    system ("stty echo </dev/tty");
+		    close(TTY);
+		};
+		if($@) {
+			$key = <>;
+		}
+	}
+	else {
+		$key = $ENV{'NOTE_PASSWD'};
 	}
 	chomp $key;
 	$db->use_crypt($key,$CRYPT_METHOD);
@@ -625,15 +671,23 @@ sub new
 		$note = "";
 		$line = "";
 		# create a new note
-    		print "enter the text of the note, end with .\n";
-		do
-    		{
-    		      $line = <STDIN>;
-    		      $note = $note . $line;
-    		} until $line eq ".\n";
-		# remove the . !
-    		chop $note;
-    		chop $note;
+		if($NewType)
+		{
+			# be silent! read from STDIN until EOF.
+			while (<STDIN>) { $note .= $_; }
+		}
+		else
+		{
+    			print "enter the text of the note, end with .\n";
+			do
+    			{
+    			      $line = <STDIN>;
+    			      $note = $note . $line;
+    			} until $line eq ".\n";
+			# remove the . !
+    			chop $note;
+    			chop $note;
+		}
 	}
 	
 	# since we have not number, look for the next available:
@@ -738,14 +792,20 @@ sub edit
 
 sub dump
 {
-    my(%res, $num);
+    my(%res, $num, $DUMP);
 	# $dump_file
-	open (DUMP, ">$dump_file") or die "could not open $dump_file\n";
-	select DUMP;
+	if($dump_file eq "-") {
+		$DUMP = *STDOUT;
+	}
+	else {
+		open (DUMPFILE, ">$dump_file") or die "could not open $dump_file\n";
+		$DUMP = *DUMPFILE;
+	}
+	select $DUMP;
     	%res = $db->get_all();	
     	foreach $num (sort { $a <=> $b } keys %res)
     	{
-		print STDOUT "dumping note number $num to $dump_file\n";
+		print STDOUT "dumping note number $num to $dump_file\n" if($dump_file ne "-");
                 print "Number: $num\n"
 		      ."Timestamp: $res{$num}->{'date'}\n"
 		      ."$res{$num}->{'note'}\n";
@@ -757,12 +817,20 @@ sub dump
 
 sub import
 {
-    my($num, $start, $complete, $dummi, $note, $date, $time, $number);
+    my($num, $start, $complete, $dummi, $note, $date, $time, $number, $stdin, $DUMP);
 	# open $dump_file and import it into the notedb
-	open (DUMP, "<$dump_file") or die "could not open $dump_file\n";
+	$stdin = 1 if($dump_file eq "-");
+	if($stdin) {
+		$DUMP = *STDIN;
+	}
+	else {
+		open (DUMPFILE, "<$dump_file") or die "could not open $dump_file\n";
+		$DUMP = *DUMPFILE;
+	}
+	$db->set_del_all() if($ImportType ne "");
 	$complete=0;
 	$start = 0;
-	while(<DUMP>)
+	while(<$DUMP>)
 	{
 		chomp $_;
 		if($_ =~ /^Number:\s\d+/)
@@ -778,7 +846,7 @@ sub import
 				# we got a complete record, save it!
 				$number = $db->get_nextnum();
 				$db->set_new($number,$note, $date);
-				print "note number $number from $dump_file inserted into notedb.\n";
+				print "note number $number from $dump_file inserted into notedb.\n" if(!$stdin);
 				$complete = 0;  
 				$note = "";    
 				$date = "";   
@@ -801,7 +869,7 @@ sub import
 		# the last record, if existent
 		$number = $db->get_nextnum();
 		$db->set_new($number,$note, $date);
-                print "note number $number from $dump_file inserted into notedb.\n";
+                print "note number $number from $dump_file inserted into notedb.\n" if(!$stdin);
         }
 }
 
@@ -809,27 +877,21 @@ sub import
 
 sub interactive
 {
-    	#$|=1;
-	#my $term = new Term::ReadLine('');
-	#my $OUT = $term->OUT || *STDOUT;
-	#my $term->MinLine(undef);
-	#my $attribs = $term->Attribs;
-	#$term->bind_key(ord "\cc", 'abort');
         my($maxlen_save, $B, $BB, $menu, $char, @LastTopic);
 	$maxlen_save = $maxlen;
 	# create menu:
 	$B = "<blackI>";
 	$BB = "</blackI>";
-	$menu = 	"[" .  $B . "L" . $BB . " List ";
+	$menu = 	"[" .  $B . "L" . $BB . "-List ";
 	if($TOPIC) {
-		$menu .= $B . "T" . $BB . " Topics ";
+		$menu .= $B . "T" . $BB . "-Topics ";
 	}
-	$menu	.= $B . "N" . $BB . " New "
-		. $B . "D" . $BB . " Delete "
-		. $B . "S" . $BB . " Search "
-		. $B . "E" . $BB . " Edit "
-		. $B . "?" . $BB . " Help "
-		. $B . "Q" . $BB . " Quit] "; # $CurTopic will be empty if $TOPIC is off!
+	$menu	.= $B . "N" . $BB . "-New "
+		. $B . "D" . $BB . "-Delete "
+		. $B . "S" . $BB . "-Search "
+		. $B . "E" . $BB . "-Edit "
+		. $B . "?" . $BB . "-Help "
+		. $B . "Q" . $BB . "-Quit] "; # $CurTopic will be empty if $TOPIC is off!
 	# per default let's list all the stuff:
 	# Initially do a list command!
 	$maxlen += $timelen;
@@ -1015,23 +1077,30 @@ sub usage
 print qq~This is the program note $version by Thomas Linden (c) 1999-2000.
 It comes with absolutely NO WARRANTY. It is distributed under the
 terms of the GNU General Public License. Use it at your own risk :-)
-Usage: 		note [-i | --interactive] | [ options ] [ number [,number...]]
+Usage: 	note [ options ] [ number [,number...]]
 Options:
-	-h	--help			displays this help screen
-	-v	--version		displays the version number
-	-l	--list [<topic>]	lists all existing notes If no topic were specified,
-					it will display a list of all existing topics.
-	-L	--longlist [<topic>]	the same as -l but prints also the timestamp
-	-t	--topic			prints a list of all topics as a tree.
-	-T	--longtopc		prints the topic-tree with the notes under each topic
-	-s	--search <string>	searches for <string> trough the notes database
-	-e	--edit <number>		edit note with <number>
-	-d	--delete <number>	delete note with <number>
-	-D	--Dump [<file>]		dumps the notes to the textfile <file>
-	-I	--Import <file>		imports a previously dumped textfile into the
-					note-database. Dumps from the mysql and the binary
-					version are in the same format.
-	-i	--interactive		interactive mode
+-h	--help			displays this help screen
+-v	--version		displays the version number
+-l	--list [<topic>]	lists all existing notes If no topic were specified,
+				it will display a list of all existing topics.
+-L	--longlist [<topic>]	the same as -l but prints also the timestamp
+-t	--topic			prints a list of all topics as a tree.
+-T	--longtopc		prints the topic-tree with the notes under each topic
+-s	--search <string>	searches for <string> trough the notes database
+-e	--edit <number>		edit note with <number>
+-d	--delete <number>	delete note with <number>
+-D	--Dump [<file> | -]	dumps the notes to the textfile <file>. if <file> is simply
+				a "-" it will printed out to standard output.
+-I	--Import <file> | -	imports a previously dumped textfile into the
+				note-database. Data will be appended by default.
+				You can also specify a dash "note -I -" instead of a <file>,
+				which causes note, silently to read in a dump from STDIN.
+-o	--overwrite		only suitable for use with --Import. Overwrites an 
+				existing notedb.
+-i	--interactive		interactive mode
+-				if you run note only with one dash: "note -", then it will
+				read in a new note from STDIN until EOF, this makes it
+				possible to pipe text into a new note.
 
  o if you specify only a number (i.e. "note 4"), then the note with that
    number will be displayed.
@@ -1043,6 +1112,9 @@ Options:
    informations about the configuration.
  o In interactive mode you can get help at any time by typing "?" or "h" at
    the prompt.
+ o If encryption support is turned on, note will ask you for a passphrase every 
+   time it runs. You can avoid this behavior by setting the environment-variable
+   \$NOTE_PASSWD. You will need this for example, if you call note from a script.
 ~;
   exit 1;
 }
@@ -1296,44 +1368,54 @@ sub getdate
 
 sub help
 {
-print qq~
---------------------------------------------------------------
-HELP for interactive note       $version
+my $B = "<blackI>";
+my $BB = "</blackI>";
+my($S, $L, $T, $Q, $H, $N, $D, $E);
+$L = $B . "L" . $BB . $NOTEC;
+$T = $B . "T" . $BB . $NOTEC;
+$Q = $B . "Q" . $BB . $NOTEC;
+$H = $B . "?" . $BB . $NOTEC;
+$N = $B . "N" . $BB . $NOTEC;
+$D = $B . "D" . $BB . $NOTEC;
+$E = $B . "E" . $BB . $NOTEC;
+$S = $B . "S" . $BB . $NOTEC;
 
+print C qq~$BORDERC
+----------------------------------------------------------------------$_BORDERC $TOPICC
+HELP for interactive note       $version
+$_TOPICC $NOTEC
 The following commands are available:
-L/l     List notes. L=long, with timestamp and l=short without timestamp.
+$L       List notes. L=long, with timestamp and l=short without timestamp.
         You can also just hit <enter> for short list.
-	If you specify a subtopic, then list will display it's contents, i.e.
-	"l mytopic" will dislpay notes under mytopic.
-N       Create a new note.
-D       Delete a note. You can either hit "d 1" or "d 1-4" or just hit "d".
+	If you specify a subtopic, then list will display it's contents, 
+	i.e.: "l mytopic" will dislpay notes under mytopic.
+$N       Create a new note.
+$D       Delete a note. You can either hit "d 1" or "d 1-4" or just hit "d".
         If you don't specify a number, you will be asked for.
-S       Search trough the notes database. Usage is similar to Delete, use
+$S       Search trough the notes database. Usage is similar to Delete, use
         a string instead of a number to search for.
-E       Edit a note. Usage is similar to Delete but you can only edit note
-        a time.~;
+$E       Edit a note. Usage is similar to Delete but you can only edit note
+        a time.
+$H       This help screen.
+$Q       Exit the program.~;
 if($TOPIC)
 {
-print qq~
-T/t     print a list of all existing topics as a tree. T prints the tree with 
-	all notes under each topic.
-	=====>
-	  You can change the actual topic by simply typing it's name or by
-	  using the command "cd", i.e. "cd mytopic".
-          You can create a new topic by creating a new note, the first line
-          must be the topic borderd by slashes, i.e. "/newtopic/". The slash
-	  is the default topic-sepearator, but you can override thie in the
-	  config!
-          If you type just ".." instead of a topic, you will go one step back
-	  in your topic-structure.
-	=====>~;
-}
-print qq~
-?/H     This help screen.
-Q       Exit the program.
+print C qq~
+$T       print a list of all existing topics as a tree. T prints the tree
+	with all notes under each topic.
 
-All commands except the List command are case insensitive.
----------------------------------------------------------------
+  You can change the actual topic by simply typing it's name or by using
+  the command "cd", i.e. "cd mytopic". You can create a new topic by creating
+  a new note, the first line must be the topic borderd by slashes, i.e.:
+  "/newtopic/". The slash is the default topic-sepearator, but you can over-
+  ride this in the config! If you type just ".." instead of a topic, you will
+  go one step back in your topic-structure.
+~;
+}
+print C qq~
+$NOTEC
+All commands except the List command are case insensitive. $_NOTEC $BORDERC
+----------------------------------------------------------------------$_BORDERC
 ~;
 }
 
@@ -1358,7 +1440,7 @@ sub display_tree {
                 	@nodes = ();("$TopicSep");
 			$text = $firstline;
                 }
-	    	&tree($text, \%TREE, @nodes);
+	    	&tree($num, $text, \%TREE, @nodes);
 	}
 
 	# now that we have build our tree (in %TREE) go on t display it:
@@ -1369,14 +1451,18 @@ sub display_tree {
 
 
 sub tree {
-    my($text, $LocalTree, $node, @nodes) = @_;
+    my($num, $text, $LocalTree, $node, @nodes) = @_;
     if(@nodes) {
 	if(! exists $LocalTree->{$node}->{$NoteKey}) {
 	    $LocalTree->{$node}->{$NoteKey} = [];
 	}
-	&tree($text, $LocalTree->{$node}, @nodes);
+	&tree($num, $text, $LocalTree->{$node}, @nodes);
     }
     else {
+	if(length($text) > ($maxlen - 5)) {
+            $text = substr($text, 0, ($maxlen -5));
+        }
+        $text = $text . " (" . $NUMC . "#" . $num . $_NUMC . $NOTEC . ")" . $_NOTEC if($text ne "");
 	push @{$LocalTree->{$node}->{$NoteKey}}, $text;
     }
 }
@@ -1402,3 +1488,4 @@ sub print_tree {
     &print_tree($hashref->{$subnotes[$index]},($index == $#subnotes?"$prefix    ":"$prefix|   "));
   }
 }
+
