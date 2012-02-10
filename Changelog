@@ -1,5 +1,19 @@
 ================================================================================
 
+1.1.1:
+FIXED:		Some odd typos in README and note.pod.
+FIXED:		if ShortCd was on and one used "cd 3" and after that "cd .."
+		then the current topic was wrong (empty $PATH).
+FIXED:		if the current topic contained no notes and one created a new
+		note without specifying a topic, then note did not add a 
+		proper topic (also because of empty $PATH).
+CHANGED:	the default colors are now visible both on black and white
+		backgrounds, see next entry.
+ADDED:		two more color values: <white_black> and <bold>.
+CHANGED:	the color hash is now in ::main instead of ::C.
+
+================================================================================
+
 1.1.0:
 CHANGED:	does no more use the external touch command to create a new
 		file, use perls open() instead.

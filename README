@@ -1,4 +1,4 @@
-note 1.1.0 by Thomas Linden, 12/08/2000
+note 1.1.1 by Thomas Linden, 20/08/2000
 =======================================
 
 Introduction
@@ -150,7 +150,7 @@ Usage
 	To create a new note, simply run "note". You can enter
 	the note (the length is by default limited to 4096 bytes,
 	which you can change from your config file if you are using
-	the binary backend, therwise there is no limitation).
+	the binary backend, otherwise there is no limitation).
 	End by typing a . on a line itself. note will tell you the 
 	number of the note.
 
@@ -162,14 +162,13 @@ Usage
 	the first line and the creation date. If topic-support is
 	turned on (which is by default), then all subtopics under the 
 	current topic will be displayed first.
-	If you want to get a listing of all
 	If you want to see the timestamps, use "-L" instead of "-l". 
 	Read more about topics below in the section "Topics".
 	You can also specify the topic which notes you want to see:
 	"-l mytopic" does the trick.
 	Additional, you might want to get an overview of your topic-
-	strcture. You can use the command "-t" in this case, which
-	will display a tree-view of your tpic-structure. You can
+	structure. You can use the command "-t" in this case, which
+	will display a tree-view of your topic-structure. You can
 	use the command "-T" if you want to see the notes under each
 	topic too. "-T" will also show the number of each note.
 
@@ -327,7 +326,7 @@ Formatting of notes
 	"magic-strings" for colorizing. Those strings looks much like HTML:
 		"<green>here is a green line of text</green> no more green."
 	As you see, the beginning of another color starts with a tag(kinda) of
-	the color <colorname> and ens with an end tag </colorname>.
+	the color <colorname> and ends with an end tag </colorname>.
 
 	The following colors are available:
 		black, red, green, yellow, blue, magenta, cyan and white.
@@ -597,4 +596,4 @@ Contributors / Credits
 Last changed
 ============
 
-	12/08/2000	
+	20/08/2000	

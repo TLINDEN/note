@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: note,v 1.5 2000/08/11 00:05:58 zarahg Exp $
+# $Id: note,v 1.10 2000/08/19 13:38:33 zarahg Exp $
 #
 #
 # note - console notes management with database and encryption support.
@@ -27,7 +27,7 @@
 #
 
 use strict;
-#use Data::Dumper;
+use Data::Dumper;
 use Getopt::Long;
 
 #
@@ -96,7 +96,7 @@ my (
     #
     # internals
     #
-    $TYPE, $mode, $NoteKey, $TempDir,
+    $TYPE, $mode, $NoteKey, $TempDir, %Color, @LastTopic,
     $version, $CurTopic, $CurDepth, $WantTopic,
     $sizeof, %TP, $TreeType, $ListType, $SetTitle,
     @ArgTopics, $key, $typedef, @NumBlock, $has_nothing,
@@ -118,16 +118,16 @@ $dbdriver 	= "binary";
 $libpath 	= "/usr/local/lib";
 $NOTEDB 	= $HOME . "/.notedb";
 $MAX_NOTE 	= 4096;
-$MAX_TIME 	= 64;
+$MAX_TIME 	= 84;
 $COLOR 		= "YES";
-$BORDER_COLOR 	= "BLACK";
+$BORDER_COLOR 	= "bold";
 $NUM_COLOR    	= "blue";
 $NOTE_COLOR   	= "green";
-$TIME_COLOR   	= "black";
-$TOPIC_COLOR 	= "BLACK";
+$TIME_COLOR   	= "blue";
+$TOPIC_COLOR 	= "bold";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.1.0";
+$version 	= "1.1.1";
 if ($TOPIC) {
   $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 }
@@ -138,6 +138,45 @@ $table          = "note";
 $fnote          = "note";
 $fdate          = "date";
 $fnum           = "number";
+
+# colors available
+# \033[1m%30s\033[0m
+%Color = (            'black'         => '0;30',
+                      'red'           => '0;31',
+                      'green'         => '0;32',
+                      'yellow'        => '0;33',
+                      'blue'          => '0;34',
+                      'magenta'       => '0;35',
+                      'cyan'          => '0;36',
+                      'white'         => '0;37',
+                      'B'             => '1;30',
+                      'BLACK'         => '1;30',
+                      'RED'           => '1;31',
+                      'GREEN'         => '1;32',
+                      'YELLOW'        => '1;33',
+                      'BLUE'          => '1;34',
+                      'MAGENTA'       => '1;35',
+                      'CYAN'          => '1;36',
+                      'WHITE'         => '1;37',
+                      'black_'        => '4;30',
+                      'red_'          => '4;31',
+                      'green_'        => '4;32',
+                      'yellow_'       => '4;33',
+                      'blue_'         => '4;34',
+                      'magenta_'      => '4;35',
+                      'cyan_'         => '4;36',
+                      'white_'        => '4;37',
+                      'blackI'        => '7;30',
+                      'redI'          => '7;31',
+                      'greenI'        => '7;32',
+                      'yellowI'       => '7;33',
+                      'blueI'         => '7;34',
+                      'magentaI'      => '7;35',
+                      'cyanI'         => '7;36',
+                      'whiteI'        => '7;37',
+                      'white_black'   => '40;37;01',
+                      'bold'          => ';01',
+             );
 
 #
 # process command line args
@@ -569,8 +608,7 @@ sub search
 
 
 ############################### LIST ##################################
-sub list
-  {
+sub list {
     my(@topic,@RealTopic, $i,$t,$n,$num,@CurItem,$top,$in,%res);
     if ($mode ne "interactive" && !$Raw) {
       print "\nList of all existing notes:\n\n";
@@ -587,7 +625,7 @@ sub list
     }
 
     foreach $num (sort { $a <=> $b } keys %res) {
-      $n = $res{$num}->{'note'}; 
+      $n = $res{$num}->{'note'};
       $t = $res{$num}->{'date'};
       if ($TOPIC) {
 	# this allows us to have multiple topics (subtopics!)
@@ -610,18 +648,18 @@ sub list
 	  }
 	}
 	elsif ($topic[$CurDepth-1] eq $CurTopic || ($topic[$CurDepth] eq "" && $CurDepth ==1)) {
-                                # cut the topic off the note-text
+	  # cut the topic off the note-text
 	  if ($n =~ /^($TopicSep)/) {
 	    $CurItem[$i]->{'note'} = $dummy;
 	  }
 	  else {
 	    $CurItem[$i]->{'note'} = $n;
 	  }
-                                # save for later output() call
+	  # save for later output() call
 	  $CurItem[$i]->{'num'}  = $num;
 	  $CurItem[$i]->{'time'} = $t;
 	  $i++;
-                                # use this note for building the $PATH!
+	  # use this note for building the $PATH!
 	  if ($RealTopic[0] eq "") {
 	    @RealTopic = @topic;
 	  }
@@ -633,16 +671,25 @@ sub list
     }
     if ($TOPIC) {
       if ($CurTopic ne "") {
-	undef $PATH;
-	foreach (@RealTopic) {
-	  $PATH .= $_ . $TopicSep;
-	  last if($_ eq $CurTopic);
+	if ($i) {
+	  # only if there were notes under current topic
+	  undef $PATH;
+	  foreach (@RealTopic) {
+	    $PATH .= $_ . $TopicSep;
+	    last if($_ eq $CurTopic);
+	  }
+	}
+	else {
+	  # it is an empty topic, no notes here
+	  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	  $PATH = join $TopicSep, @LastTopic;
+	  $PATH .= $TopicSep . $CurTopic . $TopicSep;
+	  $PATH =~ s/^\Q$TopicSep$TopicSep\E/$TopicSep/;
 	}
       }
       else {
 	$PATH = $TopicSep;
       }
-
       # we are at top level, print a list of topics...
       foreach $top (sort(keys %TP)) {
 	output("-", " => ". $top . "$TopicSep ($TP{$top} notes)",
@@ -888,11 +935,11 @@ sub import
 
 sub interactive
   {
-    my($B, $BB, $menu, $char, @LastTopic, $Channel);
+    my($B, $BB, $menu, $char, $Channel);
     $Channel = $|;
     # create menu:
-    $B = "<blackI>";
-    $BB = "</blackI>";
+    $B = "<white_black>";
+    $BB = "</white_black>";
     $menu = 	"[" .  $B . "L" . $BB . "-List ";
     if ($TOPIC) {
       $menu .= $B . "T" . $BB . "-Topics ";
@@ -1006,6 +1053,7 @@ sub interactive
       elsif ($char =~ /^\.\.$/ || $char =~ /^cd\s*\.\.$/) {
 	$CurDepth-- if ($CurDepth > 1);
 	$CurTopic = $LastTopic[$CurDepth];
+	pop @LastTopic; # remove last element
 	&list;
       }
       elsif ($char =~ /^l\s+(\w+)$/) {
@@ -1042,9 +1090,10 @@ sub interactive
 	  }
 	  if (@topic) {
 	    # only jump, if, and only if there were at least one topic!
-	    push @LastTopic, "", @topic;
 	    $CurDepth = $#topic + 1;
 	    $CurTopic = pop @topic;
+	    @LastTopic = ("");
+	    push @LastTopic, @topic;
 	  }
 	  &list;
 	}
@@ -1211,42 +1260,7 @@ sub output
 
 sub C
   {
-    my(%Color, $default, $S, $Col, $NC, $T);
-    # \033[1m%30s\033[0m
-    %Color = (        'black'         => '0;30',
-		      'red'           => '0;31',
-		      'green'         => '0;32',
-		      'yellow'        => '0;33',
-		      'blue'          => '0;34',
-		      'magenta'       => '0;35',
-		      'cyan'          => '0;36',
-		      'white'         => '0;37',
-		      'B'	      => '1;30',
-		      'BLACK'         => '1;30',
-		      'RED'           => '1;31',
-		      'GREEN'         => '1;32',
-		      'YELLOW'        => '1;33',
-		      'BLUE'          => '1;34',
-		      'MAGENTA'       => '1;35',
-		      'CYAN'          => '1;36',
-		      'WHITE'         => '1;37',
-		      'black_'        => '4;30',
-		      'red_'          => '4;31',
-		      'green_'        => '4;32',
-		      'yellow_'       => '4;33',
-		      'blue_'         => '4;34',
-		      'magenta_'      => '4;35',
-		      'cyan_'         => '4;36',
-		      'white_'        => '4;37',
-		      'blackI'        => '7;30',
-		      'redI'          => '7;31',
-		      'greenI'        => '7;32',
-		      'yellowI'       => '7;33',
-		      'blueI'         => '7;34',
-		      'magentaI'      => '7;35',
-		      'cyanI'         => '7;36',
-		      'whiteI'        => '7;37'
-	     );
+    my($default, $S, $Col, $NC, $T);
     $default = "\033[0m";
     $S = $_[0];
     foreach $Col (%Color) {
@@ -1340,8 +1354,8 @@ sub gettemp
 
 sub help
   {
-    my $B = "<blackI>";
-    my $BB = "</blackI>";
+    my $B = "<white_black>";
+    my $BB = "</white_black>";
     my($S, $L, $T, $Q, $H, $N, $D, $E);
     $L = $B . "L" . $BB . $NOTEC;
     $T = $B . "T" . $BB . $NOTEC;
@@ -1520,6 +1534,21 @@ sub getconfig
 __END__
 #
 # $Log: note,v $
+# Revision 1.10  2000/08/19 13:38:33  zarahg
+# .
+#
+# Revision 1.9  2000/08/14 14:14:20  zarahg
+# changed bug in cd .. after cd <number>, $PATH was empty.
+#
+# Revision 1.8  2000/08/14 11:21:34  zarahg
+# hmmm... the default size for time was too small :-(
+#
+# Revision 1.7  2000/08/14 10:59:26  zarahg
+# moved %Color hash from ::C() to ::main, displaying is now faster.
+#
+# Revision 1.6  2000/08/14 10:27:26  zarahg
+# use now better color defaults and added 2 new color values, bold an white_black
+#
 # Revision 1.5  2000/08/11 00:05:58  zarahg
 # 1.1.0 beta2 ready for testing
 #
