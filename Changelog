@@ -1,4 +1,17 @@
 ================================================================================
+1.2.1:
+CHANGED:	added the correct installation instructions to the README file.
+REMOVED: 	removed the usage guidelines from te README file. This information
+		were redundant because its also contained in the manpage.
+FIXED:		on FreeBSD the setting of MaxLen to 'auto' had no effect because the
+		output of 'stty -a' which I use in note to determine the actual
+		size of the terminal, is different from that on linux.
+ADDED:		topics can now be abbreviated in interactive mode, which
+		avoids typing. abbreviation works only if an explicit
+		match could be found, otherwise the available topics that
+		matches will be suggested.
+
+================================================================================
 1.2.0:
 CHANGED:        using Makemaker instead of self-written code in Makefile.PL
                 for installation. No more dependency checks built-in because

@@ -338,6 +338,8 @@ Say if you delete 1 and 2, then 3 will become 1, 4 will become 5 and so forth.
 You can search for the occurence of a text in your notes-database with the
 command B<S> or B<s>. If you omit an expression note will ask you for one.
 
+If your search criteria matches on exactly one entry, note will display
+that note entry instead of displaying its number.
 
 =item B<T>
 
@@ -350,12 +352,17 @@ notes, B<t> displays just the topics without notes.
 Change the actual topic under which you are. This works identical like just
 entering the topic but it has some advantages. You can enter B<cd ..> if
 you want to go one level up in the topic-structure. And you can enter B<cd />
-to go to the top of the structure.
+to go to the top of the structure. You can always leave out the 'cd' keyword too.
+
 Additional it is possible to enter a note-number instead of a topic name.
 For this feature to be active you need to set the config option B<ShortCd>
 to B<1> or B<yes>. If you use a number and the note with this number is
 under a certain topic then you will "cd" to this topic. This allows you
 to do kind of jumps over multiple levels of topics.
+
+If is possible to abbreviate a topic. This works only if the abbreviation
+matches on one single topic. If it matches more than one topic then the
+available ones will be suggested.
 
 =item B<? or h>
 
@@ -488,18 +495,14 @@ at the supplied sample configuration file in B<config/noterc>.
 
 
 
-=head1 SEE ALSO
-
-See the usage guide in the README or visit the note website:
-http://www.0x49.org.
-
-
 
 =head1 AUTHOR
 
 Thomas Linden <tom@daemon.de>
 
 
+=head1 VERSION
 
+1.2.1 (03/03/2003)
 
 =cut

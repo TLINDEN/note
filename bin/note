@@ -126,7 +126,7 @@ $TIME_COLOR   	= "blue";
 $TOPIC_COLOR 	= "bold";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.2.0";
+$version 	= "1.2.1";
 if ($TOPIC) {
   $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 }
@@ -916,6 +916,10 @@ sub determine_width {
       if ($wide =~ /columns (\d+?);/) {
 	$maxlen = $1 - 33; # (33 = timestamp + borders)
       }
+      elsif ($wide =~ /; (\d+?) columns;/) {
+	# bsd
+        $maxlen = $1 - 33; # (33 = timestamp + borders)
+      }
       else {
 	# stty didn't work
 	$maxlen = 80 - 33;
@@ -930,6 +934,10 @@ sub clear {
   eval {
     my $height = `stty -a`;
     if ($height =~ /rows (\d+?);/) {
+      $hoch = $1;
+    }
+    elsif ($height =~ /; (\d+?) rows;/) {
+      # bsd
       $hoch = $1;
     }
   };
@@ -1120,7 +1128,27 @@ sub interactive {
 	  &list;
 	}
 	else {
-	  print "\nunknown command!\n";
+	  # try incomplete match
+	  my @matches;
+	  foreach my $topic (keys %TP) {
+	    if ($topic =~ /^$char/) {
+	      push @matches, $topic;
+	    }
+	  }
+	  my $nm = scalar @matches;
+	  if ($nm == 1) {
+	    # match on one incomplete topic, use this
+	    $LastTopic[$CurDepth] = $CurTopic;
+	    $CurTopic = $matches[0];
+	    $CurDepth++;
+	    &list;
+	  }
+	  elsif ($nm > 1) {
+	    print "available topics: " . join( "," , @matches) . "\n";
+	  }
+	  else {
+	    print "\nunknown command!\n";
+	  }
 	}
 	undef $unchar;
       }
@@ -1130,7 +1158,7 @@ sub interactive {
 
 sub usage
   {
-    print qq~This is the program note $version by Thomas Linden (c) 1999-2000.
+    print qq~This is the program note $version by Thomas Linden (c) 1999-2003.
 It comes with absolutely NO WARRANTY. It is distributed under the
 terms of the GNU General Public License. Use it at your own risk :-)
 
