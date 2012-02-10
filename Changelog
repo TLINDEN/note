@@ -1,3 +1,10 @@
+0.5:
+ADDED:		Topic support(requested). You can sort the various notes under
+		different topics now.
+FIXED:		There was another bug, which caused the list command to display
+		the notes with a too high value of $maxlen.
+
+
 0.4.2:
 ADDED:		If run in interactive mode, note will at first do a list command.
 FIXED:		A bug caused note to save bogus timestamps after editing a note.

@@ -7,8 +7,6 @@
 # ones and, of course display them.
 # The notes will be stored in a binary data file (~/.notedb)
 #
-# Previous versions needed a mysql database. This is no more
-# the case.
 # If there exists a configfile called ~/.noterc then it will
 # be processed. You can overwrite some default values of note.
 #
@@ -40,6 +38,10 @@ $BORDER_COLOR = "BLACK";
 $NUM_COLOR    = "blue";
 $NOTE_COLOR   = "magenta";
 $TIME_COLOR   = "black";
+$TOPIC_COLOR = "BLACK";
+
+# Turns Topic Support on
+$TOPIC = 1;
 #################################################
 
 
@@ -61,7 +63,7 @@ sub import;
 
 use IO::Seekable;
 
-$version = "0.4.2 (binary database)";
+$version = "0.5 (binary database)";
 
 
 # process command line args
@@ -93,14 +95,16 @@ else
         elsif($ARGV[0] eq "-l" || $ARGV[0] eq "--list")
         {
                 $mode = "list";
+		$CurTopic = $ARGV[1];
                 $ARGV[0] = "";
         }
-		elsif($ARGV[0] eq "-L" || $ARGV[0] eq "--longlist")
-		{
-				$mode = "list";
-				$ListType = "LONG";
-                $ARGV[0] = "";
-		}
+	elsif($ARGV[0] eq "-L" || $ARGV[0] eq "--longlist")
+	{
+		$mode = "list";
+		$ListType = "LONG";
+		$CurTopic = $ARGV[1];
+               	$ARGV[0] = "";
+	}
         elsif($ARGV[0] eq "-s" || $ARGV[0] eq "--search")
         {
                 # searching
@@ -159,7 +163,7 @@ else
 	}
         elsif($ARGV[0] eq "-v" || $ARGV[0] eq "--version")
         {
-                print "This is note $version from Thomas Linden <tom\@daemon.de>.\n";
+                print "This is note $version by Thomas Linden <tom\@daemon.de>.\n";
                 exit(0);
         }
         elsif($ARGV[0] eq "-h" || $ARGV[0] eq "--help")
@@ -212,6 +216,8 @@ $NOTEC    = "<$NOTE_COLOR>";
 $_NOTEC   = "</$NOTE_COLOR>";
 $TIMEC    = "<$TIME_COLOR>";
 $_TIMEC   = "</$TIME_COLOR>";
+$TOPICC	  = "<$TOPIC_COLOR>";
+$_TOPICC  = "</$TOPIC_COLOR>";
 
 $time = `date +%d\".\"%m\".\"%Y\" \"%T`;
 chomp $time;
@@ -220,7 +226,7 @@ $typedef = "i a$MAX_NOTE a$MAX_TIME";
 $sizeof  = length pack($typedef, () );
 
 
-if($ListType ne "LONG")
+if($ListType ne "LONG" && $mode ne "interactive")
 {
      $maxlen += $timelen; # no time will be displayed!
 }
@@ -339,17 +345,84 @@ sub search
 ############################### LIST ##################################
 sub list
 {
+	if($mode ne "interactive")
+	{
+		if($TOPIC && $CurTopic eq "")
+		{
+			print "List of all available topics:\n\n";
+		}
+		elsif($TOPIC && $CurTopic ne "")
+		{
+			print "List of all notes under topic \"$CurTopic\":\n\n";
+		}
+		else
+		{
+			print "List of all existing notes:\n\n";
+		}
+	}
 	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
         seek(NOTE, 0, 0); # START FROM BEGINNING
-	#print "listing all existing notes:\n\n";
+	if($TOPIC && $CurTopic eq "")
+        {
+                undef %TP;
+	}
         while(read(NOTE, $buffer, $sizeof))
         {
                 ($num, $note, $time) = unpack($typedef, $buffer);
-                $n = ude($note);
                 $t = ude($time);
-                #print "#$num:\t$t\n---\n$n\n\n";
-		output($num, $n, $t);
-        }
+		$n = ude($note);
+		if($TOPIC)
+		{
+			# this allows us to have multiple topics (subtopics!)
+			@topic = split(/\\/,$n); 
+			if($CurTopic eq "")
+			{
+				# looks like: "\topic\"
+		                # collect:
+                		if($topic[1] eq "")
+             			{
+                        		$topic[1] = "default";
+                		}
+                		if(exists $TP{$topic[1]})
+                		{
+                		        $TP{$topic[1]}++;
+                		}
+                		else
+                		{
+                		        $TP{$topic[1]} = 1;
+                		}
+
+			}
+			else
+			{
+				if($topic[1] eq $CurTopic)
+				{
+					# cut the topic from the note-text
+					if($n =~ /^\\$CurTopic\\\n*/)
+					{
+						$n = $';
+					}
+					output($num, $n, $t);
+				}
+				elsif($topic[1] eq "" && $CurTopic eq "default")
+				{	
+					output($num, $n, $t);
+				}
+			}
+		}
+		else
+		{
+			output($num, $n, $t);
+        	}
+	}
+	if($TOPIC && $CurTopic eq "")
+	{
+		# we are at top level, print a list of topics...
+		foreach $top (sort(keys %TP))
+		{
+			print C " => " . $BORDERC. "[" . $_BORDERC . $TOPICC . $top . $_TOPICC . $BORDERC . "]" .$_BORDERC ." ($TP{$top} notes)\n";
+		}
+	}
         close(NOTE);
 	print "\n";
 }
@@ -375,7 +448,13 @@ sub new
     		# read it in ($note)
     		$note = "";
     		#open E, "<$TEMP" or die "Could not open $TEMP\n";
-    		open E, "<$TEMP" or print "...edit process interupted! No note has been saved.\n"; return;
+    		open E, "<$TEMP" or $WARN = 1; 
+		if($WARN)
+		{
+			print "...edit process interupted! No note has been saved.\n"; 
+			undef $WARN;
+			return;
+		}
 		$c = 0;
     		while(<E>)
     		{
@@ -412,6 +491,16 @@ sub new
 	seek(N, 0, 0);
 	close (N);
 	$num++; # use the highest plus 1
+
+	if($TOPIC && $CurTopic ne "")
+	{
+		@topic = split(/\\/,$note);
+		if($topic[1] eq "")
+		{
+			$note = "\\$CurTopic\\\n$note";
+		}
+	}
+	
 	
 	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
 	seek(NOTE, 0, SEEK_END); # APPEND
@@ -646,44 +735,47 @@ sub interactive
 	# create menu:
 	local $B = "<blackI>";
 	local $BB = "</blackI>";
-	local $menu = 	"[ " .  $B . "L" . $BB . " List "
+	local $menu = 	"[" .  $B . "L" . $BB . " List "
 			. $B . "N" . $BB . " New "
 			. $B . "D" . $BB . " Delete "
 			. $B . "S" . $BB . " Search "
-			. $B . "E" . $BB . " Edit "
-			. $B . "?" . $BB . " Help "
-			. $B . "Q" . $BB . " Quit ] command> ";
+			. $B . "E" . $BB . " Edit ";
+	if($TOPIC)
+	{
+		$menu .= $B . "T" . $BB . " Topic ";
+	}
+		$menu .= $B . "?" . $BB . " Help "
+			. $B . "Q" . $BB . " Quit] "; # $CurTopic will be empty if $TOPIC is off!
 	# Initially do a list command!
 	$maxlen += $timelen;
+	print "\n";
 	&list;
 	# per default let's list all the stuff:
 	for(;;)
 	{
-		#&list;
 		# reset time
 		$time = `date +%d\".\"%m\".\"%Y\" \"%T`;
 		chomp $time;
 		$ListType = "";
 		$maxlen = $maxlen_save;
-		print C $menu;
+		print C $menu . $TOPICC . $CurTopic . $_TOPICC . ">";
 		# endless until user press "Q" or "q"!
 		$char = <STDIN>;
 		chomp $char;
 		if($char =~ /^\d+/)
 		{
 			# display notes
-			$maxlen += $timelen;
 			$number = $char;
 			&display;
 		}
-		elsif($char =~ /^n/i)
+		elsif($char =~ /^n$/i)
 		{
 			# create a new one
 			$time = `date +%d\".\"%m\".\"%Y\" \"%T`;
 			chomp $time;
 			&new;
 		}
-		elsif($char =~ /^l/ || $char =~ /^$/)
+		elsif($char =~ /^l$/ || $char =~ /^$/)
 		{
 			# list
 			print "\n";
@@ -692,13 +784,14 @@ sub interactive
 			&list;
 			undef $SetTitle;
 		}
-		elsif($char =~ /^L/)
+		elsif($char =~ /^L$/)
 		{
 			$ListType = "LONG";
+			print "\n";
 			&list;
 			undef $SetTitle;
 		}
-		elsif($char =~ /^h/i || $char =~ /^\?/)
+		elsif($char =~ /^h$/i || $char =~ /^\?/)
 		{
 			# zu dumm der Mensch ;-)
 			&help;
@@ -729,7 +822,7 @@ sub interactive
 		elsif($char =~ /^e$/i)
 		{
 			# we have to ask her:
-			$maxlen += $timelen;
+			#$maxlen += $timelen;
 			print "enter number of the note you want to edit: ";
 			$char = <STDIN>;
 			chomp $char;
@@ -739,7 +832,6 @@ sub interactive
 		elsif($char =~ /^s\s+/i)
 		{
 			# she want's to search
-			$maxlen += $timelen;
 			$searchstring = $';
 			chomp $searchstring;
 			&search;
@@ -754,16 +846,45 @@ sub interactive
 			$searchstring = $char;
 			&search;
 		}
-		elsif($char =~ /^q/i)
+		elsif($char =~ /^q$/i)
 		{
 			# schade!!!
 			print "\n\ngood bye\n";
 			exit(0);
 		}
+		elsif($char =~ /^t$/i && $TOPIC)
+		{
+			$SaveTopic = $CurTopic;
+			$CurTopic = "";
+			#$maxlen += $timelen;
+			print "\n";
+			&list;
+			$CurTopic = $SaveTopic;
+			undef $SetTitle;
+		}
+		elsif($char =~ /^\.\.$/)
+		{
+			$CurTopic = "default";
+			$maxlen += $timelen;
+			print "\n";
+			&list;
+			undef $SetTitle;
+		}
 		else
 		{
 			# unknown
-			print "\nunknown command!\n";
+			if(exists $TP{$char})
+			{
+				$CurTopic = $char;
+				$maxlen += $timelen;
+				print "\n";
+        			&list;
+				undef $SetTitle;
+			}
+			else
+			{
+				print "\nunknown command!\n";
+			}
 		}
 	}
 }
@@ -779,8 +900,9 @@ Usage: 		note [-i | --interactive] | [ options ] [ number [,number...]]
 Options:
 	-h	--help			displays this help screen
 	-v	--version		displays the version number
-	-l	--list			lists all existing notes
-	-L	--longlist		the same as -l but prints also the timestamp
+	-l	--list [<topic>]	lists all existing notes. If no topic were specified,
+					it will display a list of all existing topics.
+	-L	--longlist [<topic>]	the same as -l but prints also the timestamp
 	-s	--search <string>	searches for <string> trough the notes database
 	-e	--edit <number>		edit note with <number>
 	-d	--delete <number>	delete note with <number>
@@ -1026,16 +1148,26 @@ print qq~
 HELP for interactive note       $version
 
 The following commands are available:
-L/l	List notes. L=long, with timestamp and l=short without
-	timestamp. You can also just hit <enter> for short list.
+L/l	List notes. L=long, with timestamp and l=short without timestamp.
+	You can also just hit <enter> for short list.
 N	Create a new note.
-D	Delete a note. You can either hit "d 1" or "d 1-4"
-	or just hit "d". If you don't specify a number, you
-	will be asked for.
-S	Search trough the notes database. Usage is similar to
-	Delete, use a string instead of a number to search for.
-E	Edit a note. Usage is similar to Delete but you can 
-	only edit one note a time.
+D	Delete a note. You can either hit "d 1" or "d 1-4" or just hit "d".
+	If you don't specify a number, you will be asked for.
+S	Search trough the notes database. Usage is similar to Delete, use
+	a string instead of a number to search for.
+E	Edit a note. Usage is similar to Delete but you can only edit note
+	a time.~;
+if($TOPIC)
+{
+print qq~
+T	print a list of all existing topics. You can change the actual
+	topic by simply typing it's name. You can create a new topic by
+	creating a new note, the first line must be the topic borderd by
+	backslashes, i.e.: "\\newtopic\\". If you type just ".." instead
+	of a topic, you will go to the "default" topic, which contains
+	all notes without a topic.~;
+}
+print qq~
 ?/H	This help screen.
 Q	Exit the program.
 

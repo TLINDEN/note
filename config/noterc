@@ -1,4 +1,4 @@
-# 0.4 
+# 0.5 
 # This is a sample config for the note script
 # You do not need it, if you keep the values
 # here unchanged.
@@ -8,7 +8,7 @@
 # IMPORTANT:
 # If you previously used note 0.1 or 0.2 then
 # you will already have such a file. This file
-# is not compatible with the one for note 0.3!
+# is not compatible with the one for note 0.3 and higher!
 # You have to delete it and to create a new one.
 # 
 # This config has to be valid perl code. Therefore
@@ -16,7 +16,7 @@
 #
 # You can contact me per email: <tom@daemon.de>
 # 
-# Thomas Linden, 01/2000
+# Thomas Linden, 23/2000
 
 
 # mysql database settings. leave them uncommented
@@ -39,6 +39,11 @@
 # favorite editor (even for creating notes) instead
 # of <STDIN>
 #$ALWAYS_EDIT = "YES"
+
+
+# This option turns topic-support on or off
+# comment it out, if you don't need it
+$TOPIC = 1;
 
 
 # Define the maximum bytes a note can have in a
@@ -76,6 +81,7 @@ $BORDER_COLOR = "BLACK";	# Borders
 $NUM_COLOR    = "blue";		# Note number
 $NOTE_COLOR   = "magenta";	# The note itself
 $TIME_COLOR   = "black";	# The time
+$TOPIC_COLOR  = "BLACK";	# The topic "prompt"
 
 # The following colors are available:
 # black, red, green, yellow, blue, magenta, cyan and white.
