@@ -1,3 +1,6 @@
+1.3.11:
+FIXED:		NOTEDB::pwsafe3 contained the old python stuff in delete code.
+================================================================================
 1.3.10:
 FIXED:		the YAML export/import change were missing too. grml...
 FIXED:		NOTEDB::general backend fixed loading Config::General

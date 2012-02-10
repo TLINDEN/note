@@ -3,7 +3,7 @@
 
 package NOTEDB::pwsafe3;
 
-$NOTEDB::pwsafe3::VERSION = "1.00";
+$NOTEDB::pwsafe3::VERSION = "1.01";
 
 use strict;
 use Data::Dumper;
@@ -228,22 +228,31 @@ sub set_new {
 sub set_del {
   my($this, $num) = @_;
 
+  my $uuid  = $this->_getuuid($num);
+  if(! $uuid) {
+    print "Note $num does not exist!\n";
+    return;
+  }
+
   my $fh = new FileHandle "<$this->{dbname}" or die "could not open $this->{dbname}\n";
   flock $fh, LOCK_EX;
 
   my $key   = $this->_getpass();
   eval {
-    my $vault = new Vault($key, $this->{dbname});
-    $vault->delrecord($this->_getuuid($num));
-
-    $vault->write_to_file($this->{dbname}, $key);
+    my $vault = new Crypt::PWSafe3(password => $key, file => $this->{dbname});
+    delete $vault->{record}->{$uuid};
+    $vault->markmodified();
+    $vault->save();
   };
   if ($@) {
     print "Exception caught:\n$@\n";
     exit 1;
   }
-  flock $fh, LOCK_UN;
-  $fh->close();
+
+  eval {
+    flock $fh, LOCK_UN;
+    $fh->close();
+  };
 
   # finally re-read the db, so that we always have the latest data
   $this->_retrieve($key);
