@@ -125,7 +125,7 @@ sub get_all
 
 sub import_data {
   my ($this, $data) = @_;
-  foreach my $num (keys %{$data}) {
+  foreach my $num (sort keys %{$data}) {
     my $pos = $this->get_nextnum();
     $this->set_edit($pos, $data->{$num}->{note}, $data->{$num}->{date});
   }

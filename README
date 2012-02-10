@@ -1,4 +1,4 @@
-note 1.3.3 by Thomas Linden, 02/12/2005
+note 1.3.5 by Thomas Linden, 07/19/2009
 =======================================
 
 Introduction
@@ -166,7 +166,7 @@ Refer to the note(1) manpage for usage instructions.
 Comments
 ========
 
-You can send any comments to Thomas Linden <tom@daemon.de>.
+You can send any comments to Thomas Linden <tom at linden dot at>.
 If you find a bug or if you have a suggestion for improvement of the
 script feel free to send me a patch ;-)
 
@@ -214,4 +214,4 @@ and I'll add you.
 Last changed
 ============
 
-02/12/2005
+07/19/2009

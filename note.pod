@@ -349,6 +349,12 @@ that note entry instead of displaying its number.
 This prints a tree-view of your topic-structure. B<T> displays the tree with
 notes, B<t> displays just the topics without notes.
 
+=item B<C>
+
+It is possible to change note's behavior at runtime. Specify the parameter
+you'd like to modify followed by equalsign and the new value. Use with
+care! However, database related parameters cannot be changed at runtime.
+Entering just "c" without parameters displays the customizable variables.
 
 =item B<cd topic>
 
@@ -366,6 +372,7 @@ to do kind of jumps over multiple levels of topics.
 If is possible to abbreviate a topic. This works only if the abbreviation
 matches on one single topic. If it matches more than one topic then the
 available ones will be suggested.
+
 
 =item B<? or h>
 
@@ -518,11 +525,11 @@ at the supplied sample configuration file in B<config/noterc>.
 
 =head1 AUTHOR
 
-Thomas Linden <tom@daemon.de>
+Thomas Linden <tom at linden dot at>
 
 
 =head1 VERSION
 
-1.3.1 (12/01/2005)
+1.3.5 (07/19/2009)
 
 =cut

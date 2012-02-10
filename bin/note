@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 # note - console notes management with database and encryption support.
-# Copyright (C) 1999-2004 Thomas Linden   (see README for details!)
+# Copyright (C) 1999-2009 Thomas Linden   (see README for details!)
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
-#                               - Thomas Linden <tom@daemon.de>
+#                               - Thomas Linden <tom at linden dot at>
 #
 # latest version on:
 # http://www.daemon.de/note/
@@ -56,8 +56,8 @@ sub help;		# interactive help screen
 sub import;		# import from notedb-dump
 sub display_tree;	# show nice tree-view
 sub tree;		# build the tree
-sub print_tree;		# print the tree, contributed by Jens Heunemann <Jens.Heunemann@consol.de>. THX!
-
+sub print_tree;		# print the tree, contributed by Jens Heunemann <Jens dot Heunemann at consol dot de>. THX!
+sub ticket;             # return a random string which is used as ticket number for new note entries
 
 #
 # globals
@@ -97,6 +97,7 @@ my (
     $version, $CurTopic, $CurDepth, $WantTopic, $db,
     $sizeof, %TP, $TreeType, $ListType, $SetTitle, $clearstring,
     @ArgTopics, $key, $typedef, @NumBlock, $has_nothing, @completion_topics, @completion_notes,
+    @randomlist, $hardparams
    );
 
 
@@ -105,29 +106,46 @@ my (
 # don't change them, instead use the config file!
 #
 
-$conf{dbdriver}          = "binary";
-$conf{usecolors}         = 1;
-$conf{bordercolor}       = "bold";
-$conf{numbercolor}       = "blue";
-$conf{notecolor}         = "green";
-$conf{timecolor}         = "blue";
-$conf{topiccolor}        = "bold";
-$conf{topicseparator}    = '/';
-$conf{useencryption}     = 0;
-$conf{tempdirectory}     = File::Spec->tmpdir();
-$conf{alwaysinteractive} = 1;
-$conf{alwayseditor}      = 1;
-$conf{autoclear}         = 1;
+%conf = (
+	 'numbercolor'       => 'blue',
+	 'bordercolor'       => 'black',
+	 'timecolor'         => 'black',
+	 'topiccolor'        => 'black',
+	 'notecolor'         => 'green',
+	 'alwaysinteractive' => 1,
+	 'keeptimestamp'     => 0,
+	 'readonly'          => 0,
+	 'shortcd'           => 1,
+	 'autoclear'         => 0,
+	 'maxlen'            => 'auto',
+	 'defaultlong'       => 0,
+	 'dbdriver'          => 'binary',
+	 'timeformat'        => 'DD.MM.YYYY hh:mm:ss',
+	 'usecolors'         => 0,
+	 'addticket'         => 0,
+	 'formattext'        => 0,
+	 'alwayseditor'      => 1,
+	 'useencryption'     => 0,
+	 'tempdirectory'     => File::Spec->tmpdir(),
+	 'topicseparator'    => '/',
+	 'printlines'        => 0,
+	 'cache'             => 0,
+	 'preferrededitor'   => ''
+);
+
+# these are not customizable at runtime!
+$hardparams = "(readonly|maxlen|dbdriver|useencryption|cryptmethod)";
 
 $CONF 		= File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
 $TOPIC 		= 1;
-$version 	= "1.3.3";
+$version 	= "1.3.5";
 $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 $maxlen         = "auto";
 $timelen        = 22;
 
+@randomlist = ('a'..'z', 0..9, 'A'..'Z');
 
 # colors available
 # \033[1m%30s\033[0m
@@ -224,6 +242,7 @@ else {
   }
   elsif ($opt_t || $opt_T) {
     $mode = "tree";
+    $mode = "display_tree";
     $TreeType = "LONG" if($opt_T);
   }
   elsif (defined $opt_s) {
@@ -273,7 +292,7 @@ else {
     }
   }
   elsif ($opt_v) {
-    print "This is note $version by Thomas Linden <tom\@daemon.de>.\n";
+    print "This is note $version by Thomas Linden <tom at linden dot at>.\n";
     exit(0);
   }
   elsif ($opt_h) {
@@ -414,7 +433,7 @@ if ($conf{useencryption} && $NOTEDB::crypt_supported == 1) {
 	$cipher->decrypt(unpack("u", $driver{mysql}->{dbpasswd})) if($driver{mysql}->{encrypt_passwd});
       &load_driver();
     };
-    die "Could not connect do db: $@!\n" if($@);
+    die "Could not connect to db: $@!\n" if($@);
   }
   else {
     &load_driver();
@@ -430,7 +449,16 @@ if ($conf{useencryption} && $NOTEDB::crypt_supported == 1) {
     }
   } #else empty database!
 }
+elsif ($conf{useencryption} && $NOTEDB::crypt_supported == 0) {
+  print STDERR "WARNING: You enabled database encryption but neither Crypt::CBC\n";
+  print STDERR "WARNING: or Crypt::$conf{cryptmethod} are installed! Please turn\n";
+  print STDERR "WARNING: off encryption or install the desired modules! Thanks!\n";
+  exit 1;
+}
 else {
+  # as of 1.3.5 we do not fall back to cleartext anymore
+  # I consider this as unsecure, if you don't, fix your installation!
+
   &load_driver();
   $db->no_crypt;
 
@@ -743,11 +771,37 @@ sub new {
 	$note = $PATH . "\n$note";
       }
     }
+    $note = &add_ticket($note);
+
     $db->set_new($number,$note,$date);
     # everything ok until here!
     print "note stored. it has been assigned the number $number.\n\n";
     $db->unlock();
   }
+
+sub add_ticket {
+	my $note = shift;
+	if ($conf{addticket}) {
+	  my ($topic, $title, $rest) = split /\n/, $note, 3;
+	  my $note = "";
+	  if ($topic =~ /^\//) {
+	    # topic path, keep it
+	    $note .= "$topic\n";
+	  }
+	  else {
+	    # no topic
+	    $rest  = "$title\n$rest";
+	    $title = $topic;
+	  }
+	  if ($title !~ /^\[[a-z0-9A-Z]+\]/) {
+	    # no ticket number, so create one
+	    my $ticket = &ticket();
+	    $title = "[" . ticket() . "] " . $title;
+	  }
+	  $note .= "$title\n$rest";
+	}
+	return $note;
+}
 
 
 ############################### DELETE ##################################
@@ -901,7 +955,7 @@ sub import {
 	  # we got a complete record, save it!
 	  $data{$number} = {
 			    date => $date,
-			    note => $note
+			    note => &add_ticket($note)
 			    };
 	  print "fetched note number $number from $dump_file from $date.\n" if(!$stdin);
 	  $complete = 0;
@@ -923,8 +977,8 @@ sub import {
     if ($note ne "" && $date ne "") {
       # the last record, if existent
       $data{$number} = {
-			data => $date,
-			note => $note
+			date => $date,
+			note => &add_ticket($note)
 		       };
       print "fetched note number $number from $dump_file from $date.\n" if(!$stdin);
     }
@@ -1119,6 +1173,26 @@ sub interactive {
 	&display_tree;
 	$TreeType = "";
       }
+      elsif ($char =~ /^c\s*$/) {
+	print "Missing parameter (parameter=value), available ones:\n";
+	foreach my $var (sort keys %conf) {
+	  if ($var !~ /^$hardparams/ && $var !~ /::/) {
+	    printf "%20s = %s\n", $var, $conf{$var};
+	  }
+	}
+      }
+      elsif ($char =~ /^c\s*(.+?)\s*=\s*(.+?)/) {
+	# configure
+	my $param = $1;
+	my $value = $2;
+	if ($param !~ /^$hardparams/ && $param !~ /::/ && exists $conf{$param}) {
+	    print "Changing $param from $conf{$param} to $value\n";
+	    $conf{$param} = $value;
+	}
+	else {
+	  print "Unknown config parameter $param!\n";
+	}
+      }
       elsif ($char =~ /^\.\.$/ || $char =~ /^cd\s*\.\.$/) {
 	$CurDepth-- if ($CurDepth > 1);
 	$CurTopic = $LastTopic[$CurDepth];
@@ -1210,7 +1284,7 @@ sub interactive {
 
 sub usage
   {
-    print qq~This is the program note $version by Thomas Linden (c) 1999-2003.
+    print qq~This is the program note $version by Thomas Linden (c) 1999-2009.
 It comes with absolutely NO WARRANTY. It is distributed under the
 terms of the GNU General Public License. Use it at your own risk :-)
 
@@ -1355,11 +1429,33 @@ sub output {
       # we will not reach this in raw-mode, therefore no decision here!
       chomp $note;
       $Space = " " x (($maxlen + $timelen) - $nlen - 16);
-      print C $LINE if ($conf{printlines});
-      print C "$L $NUMC$num$_NUMC $R$L$TIMEC$time$_TIMEC $Space$R\n";
-      print "\n";
-      print C $NOTEC . $note . $_NOTEC . "\n";
-      print C $LINE if ($count == 1 && $conf{printlines});
+
+      *CHANNEL = *STDOUT;
+      my $usecol = $conf{usecolors};
+
+      if ($conf{less}) {
+	      my $less = "less";
+	      if ($conf{less} ne 1) {
+		      # use given less command line
+		      $less = $conf{less};
+	      }
+	      if (open LESS, "|$less") {
+		      *CHANNEL = *LESS;
+		      $conf{usecolors} = 0;
+	      }
+      }
+
+      print CHANNEL C $LINE if ($conf{printlines});
+      print CHANNEL C "$L $NUMC$num$_NUMC $R$L$TIMEC$time$_TIMEC $Space$R\n";
+      print CHANNEL C "\n";
+      print CHANNEL C $NOTEC . $note . $_NOTEC . "\n";
+      print CHANNEL C $LINE if ($count == 1 && $conf{printlines});
+
+      if ($conf{less}) {
+	      close LESS;
+      }
+
+      $conf{usecolors} = $usecol;
     }
   }
 
@@ -1469,7 +1565,7 @@ sub gettemp {
 sub help {
     my $B = "<white_black>";
     my $BB = "</white_black>";
-    my($S, $L, $T, $Q, $H, $N, $D, $E);
+    my($S, $L, $T, $Q, $H, $N, $D, $E, $C);
     $L = $B . "L" . $BB . $NOTEC;
     $T = $B . "T" . $BB . $NOTEC;
     $Q = $B . "Q" . $BB . $NOTEC;
@@ -1478,6 +1574,7 @@ sub help {
     $D = $B . "D" . $BB . $NOTEC;
     $E = $B . "E" . $BB . $NOTEC;
     $S = $B . "S" . $BB . $NOTEC;
+    $C = $B . "C" . $BB . $NOTEC;
 
     print C qq~$BORDERC
 ----------------------------------------------------------------------$_BORDERC $TOPICC
@@ -1495,6 +1592,7 @@ $S       Search trough the notes database. Usage is similar to Delete, use
         a string instead of a number to search for.
 $E       Edit a note. Usage is similar to Delete but you can only edit note
         a time.
+$C       Change note config online. Use with care!
 $H       This help screen.
 $Q       Exit the program.~;
     if ($TOPIC) {
@@ -1528,6 +1626,7 @@ sub display_tree {
       @nodes = (); #("$conf{topicseparator}");
       $text = $firstline;
     }
+    &determine_width; # ensure $maxlen values for &tree in non interactive modes
     &tree($num, $text, \%TREE, @nodes);
   }
   #return if ($num == 0);
@@ -1664,5 +1763,7 @@ sub load_driver {
   }
 }
 
-
+sub ticket {
+  return join "", (map { $randomlist[int(rand($#randomlist))] } (0 .. 10) );
+}
 __END__

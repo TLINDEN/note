@@ -1,12 +1,12 @@
-  # note 1.3.3        -*- sh -*- 
+  # note 1.3.5        -*- sh -*- 
   #
   # This is a sample config for the note script
   # There are useful defaults set in note itself.
   # 
   # Copy it to your $HOME as .noterc
   #
-  # note is Copyright (c) 1999-2004 Thomas Linden. 
-  # You can contact me per email: <tom@daemon.de>
+  # note is Copyright (c) 1999-2009 Thomas Linden. 
+  # You can contact me per email: <tom at linden dot at>
   #
   # Comments start with #, empty lines will be ignored.
   #
@@ -106,8 +106,8 @@ DefaultLong = NO
 
   #
   # You can use an external editor everytime from note instead
-  # of STDIN for creating new notes. The default is: NO
-AlwaysEditor = NO
+  # of STDIN for creating new notes. The default is: YES
+AlwaysEditor = YES
 
 
 
@@ -148,8 +148,8 @@ MaxLen = auto
   #
   # Turn this off if you dont want note to automatically
   # clear the screen after displaying something and after
-  # exit. The default is: YES
-AutoClear = YES
+  # exit. The default is: NO
+AutoClear = NO
 
 
 
@@ -157,7 +157,7 @@ AutoClear = YES
   # note can use colors for output, turn this of, if
   # you don't like it, or if your terminal does
   # not support it. The default is: YES
-UseColors = YES
+UseColors = NO
 
 
 
@@ -182,7 +182,7 @@ TopicColor		BLACK
   #
   # Additional to colors, you can also do a little bit of formatting your
   # notes (bold, underlined, italic) text. The default is: YES.
-FormatText = YES
+FormatText = NO
 
 
 
@@ -198,7 +198,7 @@ TempDirectory = ~/tmp
   #
   # You can jump to a topic by typing "cd 13" in interactive mode.
   # The deault is: NO
-ShortCd = NO
+ShortCd = YES
 
 
 
@@ -233,17 +233,25 @@ ReadOnly = NO
 
 
   #
-  # Note separates titles and topics using horizontal lines when
-  # listing them. You can turn off this behavior by setting
-  # PrintLines to NO.
-  # The default is: YES
-PrintLines = YES
+  # Note may separate titles and topics using horizontal lines when
+  # listing them. You can turn on this behavior by setting
+  # PrintLines to YES.
+  # The default is: NO
+PrintLines = NO
+
+
+
+  #
+  # Add a hash to identify notes. Such a hash will persist several
+  # importy/export cycles and makes each single note unique.
+AddTicket = NO
+
 
 
   #
   #
   # That's all about it for now.
   # If you still have any questiosn, please feel free to contact
-  # me by email: Thomas Linden <tom@daemon.de>
+  # me by email: Thomas Linden <tom at linden dot at>
   #
   #
