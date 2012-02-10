@@ -1,15 +1,30 @@
+0.4:
+CHANGED:	ok, mysql support is back again (upon requests). therefore there
+		are two different version of the script in the same time with
+		the same features, one for mysql and the other one for the binary
+		database.
+ADDED:		Dump to textfile capability. Later on I want to dump it into a 
+		palm readable format, any help is welcome!
+ADDED:		interactive mode.
+CHANGED:	Better modularity, better code.
+CHANGED:	note can now run without the need of a config file. If does not
+		exist, it will try to work with default values.
+ADDED:		sub num_bereich(), which allows one to specify more then one
+		number for deletion or displaying (i.e.: "-d 1,4,7" or "-d 4-9")
+
+
 0.3:
 CHANGED:	it uses no more a mysql database, but a binary file instead.
-			This is much faster!
+		This is much faster!
 ADDED:		note can display the notes with colors, it is turned off by default
 
 
 
 0.2:
 FIXED:		now any occurence of ' will be masked with \' before storage
-			to the mysql database.
+		to the mysql database.
 FIXED:		now numbers of notes will be recounted, if one delete one note,
-			so the list of notes will everytime start with 1,2,3,...
+		so the list of notes will everytime start with 1,2,3,...
 CHANGED:	the look of the list output has been changed, similar to a table
 
 

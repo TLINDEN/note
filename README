@@ -1,4 +1,4 @@
-note note-0.3 by Thomas Linden, 01/2000
+note 0.4 by Thomas Linden, 13/01/2000
 
 
 Introduction
@@ -12,11 +12,22 @@ Introduction
 	able to display colored output.
 
 	You can add, edit, list and delete as many notes
-	as you want. The notes are stored in a binary
-	database. Unlike previous versions of note this
-	version don't need a database server. All you need
-	is perl and this script (and, of course, some free
-	disk space for the file...).
+	as you want. You can run note from the commandline
+	or interactive from within your console.
+
+	There are now two version of note in one package:
+		o (binary) the binary version resists in the
+		  subdirectory "binary-db". 
+		  It uses a binary file for data storage.
+		  The format of this file will be described
+		  later on. 
+		o (mysql) the mysql version resists in the
+		  subdirectory mysql-db. It uses a mysql
+		  database as backend. There are some
+		  special installation steps required in 
+		  order to run the mysql version which are 
+		  documented in the README within this
+		  subdirectory.
 
 
 
@@ -27,7 +38,7 @@ Requirements
 		o perl installed (5.004x)
 		o The module IO::Seekable, which should be 
 		  already installed with your perl distributuion.
-
+		o Mysql.pm if you want to use the mysql version.
 
 
 Installation
@@ -36,6 +47,9 @@ Installation
 	Simple: Copy it to a place inside your $PATH, 
 	probably as root. (for example to /usr/bin).
 
+	For installation instructions for the mysql version see
+	mysql-db/README.
+
 
 
 Configuration
@@ -43,14 +57,19 @@ Configuration
 
 	This version of note doesn't neccessarily need
 	a configuration file. But you can have one and change
-	some default values. Take a look to the file noterc
+	some default values. Take a look to the file config/noterc
 	provided with this tarball. There are detailed instructions
 	about every available parameter.
+	Simply copy this file into your home-directory and name it
+	.noterc
 
 
 
 Usage
 =====
+	Usage of the mysql and binary version is similar, there
+	are only differences between the database backends of
+	each other.
 
 	If you don't know, how to run note, try "note -h" first. 
 	It will tell you all available commandline options.
@@ -88,7 +107,7 @@ Usage
 
 
 
-Format of the notedb
+Format of the notedb (binary version)
 ====================
 
 	The database where the notes are stored is a binary file of
@@ -111,6 +130,11 @@ Format of the notedb
 Security
 ========
 
+	You can't use the following hints with the mysql version!
+	Refer to the mysql manual for more informations about
+	security of mysql databases:
+	http://www.mysql.org/Manual_chapter/manual_Privilege_system.html
+	
 	If you want to protect the notedb against unauthorized persons
 	(even root), you might want to use pgp. I use gpg (GNU privacy
 	guard), which is compatible to pgp, usage should be similar.
@@ -133,7 +157,20 @@ Security
 	therefore you need to encrypt your notedb once before you can use this
 	funcion:
 		"gpg -e ~/.notedb --yes -r username"
-	
+
+	Here is, how to do it with pgp, create a shell script with the following
+	content:
+	--- snip ---
+		#!/bin/sh
+		/bin/echo -n "passphrase:"
+		pgp -o ~/.notedb -d ~/.notedb.pgp > /dev/null 2>&1
+		rm -f ~/.notedb.pgp > /dev/null 2>&1
+		note.pl $1 $2 $3
+		pgp -e ~/.notedb tlinden > /dev/null 2>&1
+		rm -f ~/.notedb > /dev/null 2>&1
+	--- snip ---
+	Do "chmod 700 whatevername". That's it.	
+
 	If you don't make use of encryption, I suggest you to chmod it:
 		"chmod 600 .notedb"
 	So, only you can read the file (and root or any intruder who became root).	
@@ -167,4 +204,4 @@ Author
 Last changed
 ============
 
-	09.01.2000	
+	13.01.2000	
