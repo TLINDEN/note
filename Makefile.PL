@@ -9,13 +9,14 @@ my %optional = (
 		'Config::General' => "Required by general DB backend",
 		'DB_File'         => "Required by dbm DB backend",
 		'DBI'             => "Required by mysql DB backend",
-		'DBD::mysql'      => "Required by mysql DB backend"
+		'DBD::mysql'      => "Required by mysql DB backend",
+		'Crypt::PWSafe3'  => "Required by Password Safe v3 backend"
 	      );
 
 foreach my $module (sort keys %optional) {
   eval "require $module";
   if ($@) {
-    warn("Optional module $module no installed, $optional{$module}\n");
+    warn("Optional module $module not installed, $optional{$module}\n");
   }
 }
 
@@ -33,6 +34,7 @@ WriteMakefile(
 				 'Getopt::Long' => 0,
 				 'Fcntl'        => 0,
 				 'IO::Seekable' => 0,
+				 'YAML'         => 0,
 				 },
 	      ($ExtUtils::MakeMaker::VERSION ge '6.31'? ('LICENSE'              => 'perl', ) : ()),
 	      'clean'        => { FILES => 't/*.out t/test.cfg *~ */*~' }

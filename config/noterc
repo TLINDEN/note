@@ -1,11 +1,11 @@
-  # note 1.3.5        -*- sh -*- 
+  # note 1.3.8        -*- sh -*- 
   #
   # This is a sample config for the note script
   # There are useful defaults set in note itself.
   # 
   # Copy it to your $HOME as .noterc
   #
-  # note is Copyright (c) 1999-2009 Thomas Linden. 
+  # note is Copyright (c) 1999-2012 Thomas Linden. 
   # You can contact me per email: <tom at linden dot at>
   #
   # Comments start with #, empty lines will be ignored.
@@ -29,7 +29,7 @@
   # to use. Please refer to the corresponding documentation
   # for closer information about the certain backend!
   # Currently supported types: "binary", "dbm", "mysql",
-  # "general" or "text".
+  # "general", "dumper", "pwsafe3" or "text".
   # You must also edit/uncomment one section below for the
   # backend you want to use!
 dbdriver = binary
@@ -66,10 +66,40 @@ dbm::directory = ~/.notedbm          # directory
 general::dbname = ~/.notedb          # filename
 
 
-    #
+  #
   # TEXT backend
 text::dbname = ~/.notedb             # filename
 
+
+  #
+  # DUMPER backend
+dumper::dbname = ~/.notedb             # filename
+
+
+
+  #
+  # Password Safe v3 backend
+  # Some notes on this one:
+  # This backend maintains encryption itself, which is
+  # mandatory as well. So you'll have to disable encryption
+  # (UseEncryption = NO)!
+  #
+  # The Password Safe v3 file has its own fields for
+  # password and username, which note doesn't have. To be
+  # compatible, the pwsafe3 backend parses the note text
+  # for those fields and stores them accordignly to the db:
+  #
+  # For username field: user|username|login|account|benutzer
+  # For passwd field: password|pass|passwd|kennwort|pw
+  #
+  # If it doesn't find it, it will put empty strings
+  # into the pwsafe3 database.
+  #
+  # The pwsafe3 database can be accessed by Password Safe
+  # (see: http://passwordsafe.sourceforge.net/) or other
+  # tools which support the format (see: 
+  # http://passwordsafe.sourceforge.net/relatedprojects.shtml)
+pwsafe3::dbname = ~/db.psafe3             # filename
 
 
   #
