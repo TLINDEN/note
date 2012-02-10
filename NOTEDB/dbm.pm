@@ -1,180 +1,187 @@
 #!/usr/bin/perl
-# $Id: dbm.pm,v 1.1.1.1 2000/07/01 14:40:52 zarahg Exp $
+# $Id: dbm.pm,v 1.3 2000/08/11 00:05:58 zarahg Exp $
 # Perl module for note
 # DBM database backend. see docu: perldoc NOTEDB::dbm
 #
 
+package NOTEDB;
+
 use DB_File;
-#use Data::Dumper;
+use Data::Dumper;
 use NOTEDB;
 use strict;
-package NOTEDB;
+
 
 
 # Globals:
-my ($dbm_dir, $notefile, $timefile, $version, $cipher, %note, %date);
-$notefile  = "note.dbm";
-$timefile  = "date.dbm";
+my (%note, %date);
 
-$version = "(NOTEDB::dbm, 1.1)";
 
 sub new
 {
-	my($this, $dbdriver, $dbm_dir) = @_;
-	my $class = ref($this) || $this;
-	my $self = {};
-	bless($self,$class);
+    my($this, $dbdriver, $dbm_dir) = @_;
+    my $class = ref($this) || $this;
+    my $self = {};
+    bless($self,$class);
 
-	tie %note,  "DB_File", "$dbm_dir/$notefile"  || die $!;
-	tie %date,  "DB_File", "$dbm_dir/$timefile"  || die $!;
+    my $notefile     = "note.dbm";
+    my $timefile     = "date.dbm";
+    $self->{version} = "(NOTEDB::dbm, 1.2)";
 
-	return $self;
+    tie %note,  "DB_File", "$dbm_dir/$notefile"  || die $!;
+    tie %date,  "DB_File", "$dbm_dir/$timefile"  || die $!;
+
+    return $self;
 }
 
 
 sub DESTROY
 {
-	# clean the desk!
-	untie %note, %date;
+    # clean the desk!
+    untie %note, %date;
 }
 
 sub version {
-        return $version;
+    my $this = shift;
+    return $this->{version};
 }
 
 
-sub get_single 
+sub get_single
 {
-	my($this, $num) = @_;
-	my($note, $date);
-	return ude ($note{$num}), ude($date{$num});
+    my($this, $num) = @_;
+    my($note, $date);
+    return $this->ude ($note{$num}), $this->ude($date{$num});
 }
 
 
 sub get_all
 {
-        my($this, $num, $note, $date, %res, $real);
-	foreach $num (sort {$a <=> $b} keys %date) {
-                $res{$num}->{'note'} = ude($note{$num});
-		$res{$num}->{'date'} = ude($date{$num});
-	}
-	return %res;
+    my $this = shift;
+    my($num, $note, $date, %res, $real);
+    foreach $num (sort {$a <=> $b} keys %date) {
+	$res{$num}->{'note'} = $this->ude($note{$num});
+	$res{$num}->{'date'} = $this->ude($date{$num});
+    }
+    return %res;
 }
 
 
 sub get_nextnum
 {
-	my($this, $num);
-	foreach (sort {$a <=> $b} keys %date) {
-	  $num = $_;
-	}
-	$num++;
-	return $num;
+    my($this, $num);
+    foreach (sort {$a <=> $b} keys %date) {
+	$num = $_;
+    }
+    $num++;
+    return $num;
 }
 
 sub get_search
 {
-	my($this, $searchstring) = @_;
-	my($num, $note, $date, %res, $match);
+    my($this, $searchstring) = @_;
+    my($num, $note, $date, %res, $match);
 
-        my $regex = $this->generate_search($searchstring);
+    my $regex = $this->generate_search($searchstring);
+    eval $regex;
+    if ($@) {
+	print "invalid expression: \"$searchstring\"!\n";
+	return;
+    }
+    $match = 0;
+    foreach $num (sort {$a <=> $b} keys %date) {
+	$_ = $this->ude($note{$num});
 	eval $regex;
-	if ($@) {
-	  print "invalid expression: \"$searchstring\"!\n";
-	  return;
+	if ($match) {
+	    $res{$num}->{'note'} = $this->ude($note{$num});
+	    $res{$num}->{'date'} = $this->ude($date{$num});
 	}
 	$match = 0;
-	foreach $num (sort {$a <=> $b} keys %date) {
-	  $_ = ude($note{$num});
-	  eval $regex;
-	  if ($match) {
-                $res{$num}->{'note'} = ude($note{$num});
-		$res{$num}->{'date'} = ude($date{$num});
-	  }
-	  $match = 0;
-	}
+    }
 
-	return %res;
+    return %res;
 }
 
 
 
 sub set_recountnums
 {
-	my $this = shift;
-	my(%Note, %Date, $num, $setnum);
-	$setnum = 1;
-	foreach $num (sort {$a <=> $b} keys %note) {
-	  $Note{$setnum} = $note{$num};
-	  $Date{$setnum} = $date{$num};
-	  $setnum++;
-	}
-	%note = %Note;
-	%date = %Date;
+    my $this = shift;
+    my(%Note, %Date, $num, $setnum);
+    $setnum = 1;
+    foreach $num (sort {$a <=> $b} keys %note) {
+	$Note{$setnum} = $note{$num};
+	$Date{$setnum} = $date{$num};
+	$setnum++;
+    }
+    %note = %Note;
+    %date = %Date;
 }
 
 
 
 sub set_edit
 {
-	my($this, $num, $note, $date) = @_;
-	$note{$num} = uen($note);
-	$date{$num} = uen($date);
+    my($this, $num, $note, $date) = @_;
+    $note{$num} = $this->uen($note);
+    $date{$num} = $this->uen($date);
 }
 
 
 sub set_new
 {
-	my($this, $num, $note, $date) = @_;
-	$this->set_edit($num, $note, $date); # just the same thing
+    my($this, $num, $note, $date) = @_;
+    $this->set_edit($num, $note, $date); # just the same thing
 }
 
 
 sub set_del
 {
-        my($this, $num) = @_;
-	my($note, $date, $T);
-	($note, $date) = $this->get_single($num);
-	return "ERROR"  if ($date !~ /^\d/);
-	delete $note{$num};
-	delete $date{$num};
+    my($this, $num) = @_;
+    my($note, $date, $T);
+    ($note, $date) = $this->get_single($num);
+    return "ERROR"  if ($date !~ /^\d/);
+    delete $note{$num};
+    delete $date{$num};
 }
 
 sub set_del_all
 {
-        my($this) = @_;
-	%note = ();
-	%date = ();
-        return;
+    my($this) = @_;
+    %note = ();
+    %date = ();
+    return;
 }
 
 sub uen
 {
-        my($T);
-        if($NOTEDB::crypt_supported == 1) {
-                eval {
-                        $T = pack("u", $cipher->encrypt($_[0]));
-                };
-        }
-        else {
-                $T = $_[0];
-        }
-        chomp $T;
-        return $T;
+    my $this = shift;
+    my($T);
+    if($NOTEDB::crypt_supported == 1) {
+	eval {
+	    $T = pack("u", $this->{cipher}->encrypt($_[0]));
+	};
+    }
+    else {
+	$T = $_[0];
+    }
+    chomp $T;
+    return $T;
 }
 
 sub ude
 {
-        my($T);
-        if($NOTEDB::crypt_supported == 1) {
-                eval {
-                        $T = $cipher->decrypt(unpack("u",$_[0]))
-                };
-                return $T;
-        }
-        else {
-                return $_[0];
-        }
+    my $this = shift;
+    my($T);
+    if($NOTEDB::crypt_supported == 1) {
+	eval {
+	    $T = $this->{cipher}->decrypt(unpack("u",$_[0]))
+	};
+	return $T;
+    }
+    else {
+	return $_[0];
+    }
 }
 
 

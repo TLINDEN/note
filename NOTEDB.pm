@@ -2,7 +2,7 @@
 # this is a generic module, used by note database
 # backend modules.
 #
-# $Id$
+# $Id: NOTEDB.pm,v 1.2 2000/08/11 00:05:58 zarahg Exp $
 #
 # Copyright (c) 2000 Thomas Linden <tom@daemon.de>
 
@@ -10,36 +10,40 @@
 package NOTEDB;
 
 BEGIN {
-	# make sure, it works, otherwise encryption
-	# is not supported on this system!
-	eval { require Crypt::CBC; };
-	if($@) {
-		$NOTEDB::crypt_supported = 0;
-	}
-	else {
-		$NOTEDB::crypt_supported = 1;
-	}
+    # make sure, it works, otherwise encryption
+    # is not supported on this system!
+    eval { require Crypt::CBC; };
+    if($@) {
+	$NOTEDB::crypt_supported = 0;
+    }
+    else {
+	$NOTEDB::crypt_supported = 1;
+    }
 }
 
 
 sub no_crypt {
-	$NOTEDB::crypt_supported = 0;
+    $NOTEDB::crypt_supported = 0;
 }
 
 
 sub use_crypt {
-	my($this,$key,$method) = @_;
-	if($NOTEDB::crypt_supported == 1) {
-		eval {
-			$cipher = new Crypt::CBC($key, $method);
-		};
-		if($@) {
-                        $NOTEDB::crypt_supported == 0;
-                }
+    my($this,$key,$method) = @_;
+    my($cipher);
+    if($NOTEDB::crypt_supported == 1) {
+	eval {
+	    $cipher = new Crypt::CBC($key, $method);
+	};
+	if($@) {
+	    $NOTEDB::crypt_supported == 0;
 	}
-	else{
-		print "warning: Crypt::CBC not supported by system!\n";
+	else {
+	    $this->{cipher} = $cipher;
 	}
+    }
+    else{
+	print "warning: Crypt::CBC not supported by system!\n";
+    }
 }
 
 
@@ -150,7 +154,10 @@ sub generate_search {
 
     $string =~ s/\/\s*(?!and|or)/\//g;
 
+    #my $res = qq(\$match = 1 if($string););
     return qq(\$match = 1 if($string););
+    #print $res . "\n";
+    #return $res;
 }
 
 sub check_or {
@@ -179,25 +186,49 @@ sub check_exact {
   #
   my($this, $str) = @_;
 
-  my %globs = (
-	       '*' => '.*',
-	       '?' => '.',
-	       '[' => '[',
-	       ']' => ']',
-	       '+' => '\+',
-	       '.' => '\.',
-	       '$' => '\$',
-	       '@' => '\@',
+  my %wildcards = (
+		   '*' => '.*',
+		   '?' => '.',
+		   '[' => '[',
+		   ']' => ']',
+		   '+' => '\+',
+		   '.' => '\.',
+		   '$' => '\$',
+		   '@' => '\@',
+		   '/' => '\/',
+		   '|' => '\|',
+		   '}' => '\}',
+		   '{' => '\{',
 	      );
+
+  my %escapes  = (
+		  '*' => '\*',
+		  '?' => '\?',
+		  '[' => '[',
+		  ']' => ']',
+		  '+' => '\+',
+		  '.' => '\.',
+		  '$' => '\$',
+		  '@' => '\@',
+		  '(' => '\(',
+		  ')' => '\)',
+		  '/' => '\/',
+		  '|' => '\|',
+		  '}' => '\}',
+		  '{' => '\{',
+		 );
 
   # mask backslash
   $str =~ s/\\/\\\\/g;
 
+
   if ($str =~ /^"/ && $str =~ /"$/) {
     # mask bracket-constructs
-    $str =~ s/(\(|\))/\\$1/g;
+      $str =~ s/(.)/$escapes{$1} || "$1"/ge;
   }
-  $str =~ s/(.)/$globs{$1} || "$1"/ge;
+  else {
+      $str =~ s/(.)/$wildcards{$1} || "$1"/ge;
+  }
 
   $str =~ s/^"//;
   $str =~ s/"$//;

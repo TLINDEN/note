@@ -1,4 +1,4 @@
-note 1.0.9 by Thomas Linden, 08/08/2000
+note 1.1.0 by Thomas Linden, 12/08/2000
 =======================================
 
 Introduction
@@ -199,10 +199,12 @@ Usage
 
 	or:
 
-	$ note -s "(mike OR arnold) AND (jackson OR schwarzenegger)"
+	$ note -s "(mike OR ar??ld) AND (jackson OR schwarzen*)"
 
 	If note finds a note, which first line is a topic, then it will
 	display it's second line.
+	If you want to search for ? or * then you have to surround the
+	searchstring with apostrophs ("").
 	These rules apply for the interactive search too.
 
 	Instead of using note from the commandline you can use the
@@ -218,7 +220,7 @@ Usage
 	for further use).
 	The dumps from the two versions of note are in the same format.
 	Using dumps it is also possible to reinitialize your database. You
-	can use the "-o" switch whcih causes note to overwrite your existing 
+	can use the "-o" switch which causes note to overwrite your existing 
 	database. This is very handy if you changed heavily your config. And 
 	it is required, if you changed: encryption, db-driver, (binary-format)
 	and the password. You can use the following command for reinitializing:
@@ -595,4 +597,4 @@ Contributors / Credits
 Last changed
 ============
 
-	08/08/2000	
+	12/08/2000	

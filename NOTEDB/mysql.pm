@@ -1,174 +1,192 @@
 #!/usr/bin/perl
-# $Id: mysql.pm,v 1.1.1.1 2000/07/01 14:40:52 zarahg Exp $
+# $Id: mysql.pm,v 1.3 2000/08/11 00:05:58 zarahg Exp $
 # Perl module for note
-# mysql database backend. see docu: perldoc NOTEDB::binary
+# mysql database backend. see docu: perldoc NOTEDB::mysql
 #
+
+
+package NOTEDB;
+
 
 use DBI;
 use strict;
 use Data::Dumper;
 use NOTEDB;
 
-package NOTEDB;
 
-# Globals:
-my ($DB, $table, $fnum, $fnote, $fdate, $version, $cipher);
-$table = "note";
-$fnum = "number";
-$fnote = "note";
-$fdate = "date";
-$version = "(NOTEDB::mysql, 1.4)";
-
-# prepare some std statements... #####################################################################
-my $sql_getsingle	= "SELECT $fnote,$fdate FROM $table WHERE $fnum = ?";
-my $sql_all		= "SELECT $fnum,$fnote,$fdate FROM $table";
-my $sql_nextnum		= "SELECT max($fnum) FROM $table";
-my $sql_incrnum		= "SELECT $fnum FROM $table ORDER BY $fnum";
-
-my $sql_setnum 		= "UPDATE $table SET $fnum = ? WHERE $fnum = ?";
-my $sql_edit		= "UPDATE $table SET $fnote = ?, $fdate = ? WHERE $fnum = ?";
-
-my $sql_insertnew	= "INSERT INTO $table VALUES (?, ?, ?)";
-
-my $sql_del		= "DELETE FROM $table WHERE $fnum = ?";
-my $sql_del_all		= "DELETE FROM $table"; 
-######################################################################################################
 
 sub new
 {
-	# no prototype, because of the bin-version, which takes only a filename!
-	my($this, $dbdriver, $dbname, $dbhost, $dbuser, $dbpasswd) = @_;
+    # no prototype, because of the bin-version, which takes only a filename!
 
-	my $class = ref($this) || $this;
-	my $self = {};
-	bless($self,$class);
-	my $database = "DBI:$dbdriver:$dbname;host=$dbhost";
+    my($this, $dbdriver, $dbname, $dbhost, $dbuser, $dbpasswd,
+        $table, $fnum, $fnote, $fdate, $dbport) = @_;
 
-	$DB = DBI->connect($database, $dbuser, $dbpasswd) || die DBI->errstr();
-	return $self;
+    my $class = ref($this) || $this;
+    my $self = {};
+    bless($self,$class);
+
+    my $database;
+    if ($dbport) {
+	$database = "DBI:$dbdriver:$dbname;host=$dbhost:$dbport";
+    }
+    else {
+	$database = "DBI:$dbdriver:$dbname;host=$dbhost";
+    }
+
+    $self->{version}       = "(NOTEDB::mysql, 1.5)";
+    $self->{table}         = $table;
+
+    $self->{sql_getsingle} = "SELECT $fnote,$fdate FROM $self->{table} WHERE $fnum = ?";
+    $self->{sql_all}       = "SELECT $fnum,$fnote,$fdate FROM $self->{table}";
+    $self->{sql_nextnum}   = "SELECT max($fnum) FROM $self->{table}";
+    $self->{sql_incrnum}   = "SELECT $fnum FROM $self->{table} ORDER BY $fnum";
+    $self->{sql_setnum}    = "UPDATE $self->{table} SET $fnum = ? WHERE $fnum = ?";
+    $self->{sql_edit}      = "UPDATE $self->{table} SET $fnote = ?,$fdate = ? WHERE $fnum = ?";
+    $self->{sql_insertnew} = "INSERT INTO $self->{table} VALUES (?, ?, ?)";
+    $self->{sql_del}       = "DELETE FROM $self->{table} WHERE $fnum = ?";
+    $self->{sql_del_all}   = "DELETE FROM $self->{table}";
+
+    $self->{DB} = DBI->connect($database, $dbuser, $dbpasswd) or die DBI->errstr();
+
+    return $self;
 }
 
 
 sub DESTROY
 {
-	# clean the desk!
+    # clean the desk!
+    my $this = shift;
+    $this->{DB}->disconnect;
 }
 
 
 sub lock {
-  my($this) = @_;
-  # LOCK the database!
-  my $lock = $DB->prepare("LOCK TABLES $table WRITE") || die $DB->errstr();
-  $lock->execute() || die $DB->errstr();
+    my($this) = @_;
+    # LOCK the database!
+    my $lock = $this->{DB}->prepare("LOCK TABLES $this->{table} WRITE")
+      || die $this->{DB}->errstr();
+    $lock->execute() || die $this->{DB}->errstr();
 }
 
 
 sub unlock {
-  my($this) = @_;
-  my $unlock = $DB->prepare("UNLOCK TABLES") || die $DB->errstr;
-  $unlock->execute() || die $DB->errstr();
-  $DB->disconnect || die $DB->errstr;
+    my($this) = @_;
+    my $unlock = $this->{DB}->prepare("UNLOCK TABLES") || die $this->{DB}->errstr;
+    $unlock->execute() || die $this->{DB}->errstr();
 }
 
 
 sub version {
-	return $version;
+    my $this = shift;
+    return $this->{version};
 }
 
 
 sub get_single {
-	my($this, $num) = @_;
+    my($this, $num) = @_;
 
-	my($note, $date);
-	my $statement = $DB->prepare($sql_getsingle) || die $DB->errstr();
+    my($note, $date);
+    my $statement = $this->{DB}->prepare($this->{sql_getsingle}) || die $this->{DB}->errstr();
 
-	$statement->execute($num) || die $DB->errstr();
-	$statement->bind_columns(undef, \($note, $date)) || die $DB->errstr();
+    $statement->execute($num) || die $this->{DB}->errstr();
+    $statement->bind_columns(undef, \($note, $date)) || die $this->{DB}->errstr();
 
-	while($statement->fetch) {
-		return ude($note), ude($date);
-	}
+    while($statement->fetch) {
+	return $this->ude($note), $this->ude($date);
+    }
 }
 
 
 sub get_all
 {
-        my $this = shift;
-        my($num, $note, $date, %res);
+    my $this = shift;
+    my($num, $note, $date, %res);
 
-	if ($this->unchanged) {
-	    return %{$this->{cache}};
-	}
+    if ($this->unchanged) {
+	return %{$this->{cache}};
+    }
 
-        my $statement = $DB->prepare($sql_all) || die $DB->errstr();
+    my $statement = $this->{DB}->prepare($this->{sql_all}) or die $this->{DB}->errstr();
 
-        $statement->execute || die $DB->errstr();
-        $statement->bind_columns(undef, \($num, $note, $date)) || die $DB->errstr();
+    $statement->execute or die $this->{DB}->errstr();
+    $statement->bind_columns(undef, \($num, $note, $date)) or die $this->{DB}->errstr();
 
-        while($statement->fetch) {
-                $res{$num}->{'note'} = ude($note);
-		$res{$num}->{'date'} = ude($date);
-        }
+    while($statement->fetch) {
+	$res{$num}->{'note'} = $this->ude($note);
+	$res{$num}->{'date'} = $this->ude($date);
+    }
 
-        $this->cache(%res);
-	return %res;
+    $this->cache(%res);
+    return %res;
 }
 
 
 sub get_nextnum
 {
-	my($this, $num);
-	if ($this->unchanged) {
-	    $num = 1;
-	    foreach (keys %{$this->{cache}}) {
-		$num++;
-	    }
-	    return $num;
+    my $this = shift;
+    my($num);
+    if ($this->unchanged) {
+	$num = 1;
+	foreach (keys %{$this->{cache}}) {
+	    $num++;
 	}
+	return $num;
+    }
 
-	my $statement = $DB->prepare($sql_nextnum) || die $DB->errstr();
+    my $statement = $this->{DB}->prepare($this->{sql_nextnum}) || die $this->{DB}->errstr();
 
-	$statement->execute || die $DB->errstr();
-	$statement->bind_columns(undef, \($num)) || die $DB->errstr();
+    $statement->execute || die $this->{DB}->errstr();
+    $statement->bind_columns(undef, \($num)) || die $this->{DB}->errstr();
 
-	while($statement->fetch) {
-		return $num+1;
-	}
+    while($statement->fetch) {
+	return $num+1;
+    }
 }
 
 sub get_search
 {
-	my($this, $searchstring) = @_;
-	my($num, $note, $date, %res, $match);
+    my($this, $searchstring) = @_;
+    my($num, $note, $date, %res, $match, $use_cache);
 
-	my $regex = $this->generate_search($searchstring);
+    my $regex = $this->generate_search($searchstring);
+    eval $regex;
+    if ($@) {
+	print "invalid expression: \"$searchstring\"!\n";
+	return;
+    }
+    $match = 0;
+
+    if ($this->unchanged) {
+	foreach my $num (keys %{$this->{cache}}) {
+	    $_ = $this->{cache}{$num}->{note};
+	    eval $regex;
+	    if ($match) {
+		$res{$num}->{note} = $this->{cache}{$num}->{note};
+		$res{$num}->{date} = $this->{cache}{$num}->{date}
+	    }
+	    $match = 0;
+	}
+	return %res;
+    }
+
+    my $statement = $this->{DB}->prepare($this->{sql_all}) or die $this->{DB}->errstr();
+
+    $statement->execute or die $this->{DB}->errstr();
+    $statement->bind_columns(undef, \($num, $note, $date)) or die $this->{DB}->errstr();
+
+    while($statement->fetch) {
+	$note = $this->ude($note);
+	$date = $this->ude($date);
+	$_ = $note;
 	eval $regex;
-	if ($@) {
-	  print "invalid expression: \"$searchstring\"!\n";
-	  return;
-	}
-	$match = 0;
-
-	my %data;
-	if ($this->unchanged) {
-	    %data = %{$this->{cache}};
-	}
-	else {
-	    %data = $this->get_all();
-	}
-	foreach $num (sort { $a <=> $b } keys %data) {
-	  $note = ude($data{$num}->{'note'});
-	  $date = ude($data{$num}->{'date'});
-	  $_ = $note;
-	  eval $regex;
-	  if($match) {
+	if($match) {
 	    $res{$num}->{'note'} = $note;
 	    $res{$num}->{'date'} = $date;
-	  }
-	  $match = 0;
 	}
-
-	return %res;
+	$match = 0;
+    }
+    return %res;
 }
 
 
@@ -176,116 +194,119 @@ sub get_search
 
 sub set_edit
 {
-	my($this, $num, $note, $date) = @_;
+    my($this, $num, $note, $date) = @_;
 
-	$this->lock;
-	my $statement = $DB->prepare($sql_edit) || die $DB->errstr();
-	$note =~ s/'/\'/g;
-        $note =~ s/\\/\\\\/g;
-	$statement->execute(uen($note), uen($date), $num) || die $DB->errstr();
-	$this->unlock;
-	$this->changed;
+    $this->lock;
+    my $statement = $this->{DB}->prepare($this->{sql_edit}) or die $this->{DB}->errstr();
+    $note =~ s/'/\'/g;
+    $note =~ s/\\/\\\\/g;
+    $statement->execute($this->uen($note), $this->uen($date), $num)
+      or die $this->{DB}->errstr();
+    $this->unlock;
+    $this->changed;
 }
 
 
 sub set_new
 {
-	my($this, $num, $note, $date) = @_;
-	$this->lock;
-	my $statement = $DB->prepare($sql_insertnew) || die $DB->errstr();
+    my($this, $num, $note, $date) = @_;
+    $this->lock;
+    my $statement = $this->{DB}->prepare($this->{sql_insertnew}) || die $this->{DB}->errstr();
 
-	$note =~ s/'/\'/g;
-	$note =~ s/\\/\\\\/g;
-	$statement->execute($num, uen($note), uen($date)) || die $DB->errstr();
-	$this->unlock;
-	$this->changed;
+    $note =~ s/'/\'/g;
+    $note =~ s/\\/\\\\/g;
+    $statement->execute($num, $this->uen($note), $this->uen($date)) || die $this->{DB}->errstr();
+    $this->unlock;
+    $this->changed;
 }
 
 
 sub set_del
 {
-        my($this, $num) = @_;
-	my($note, $date, $T);
+    my($this, $num) = @_;
+    my($note, $date, $T);
 
-	$this->lock;
-	($note, $date) = $this->get_single($num);
+    $this->lock;
+    ($note, $date) = $this->get_single($num);
 
-	return "ERROR"  if ($date !~ /^\d/);
+    return "ERROR"  if ($date !~ /^\d/);
 
-	# delete record!
-	my $statement = $DB->prepare($sql_del) || die $DB->errstr();
-	$statement->execute($num) || die $DB->errstr();
-	$this->unlock;
-	$this->changed;
-	return;
+    # delete record!
+    my $statement = $this->{DB}->prepare($this->{sql_del}) || die $this->{DB}->errstr();
+    $statement->execute($num) || die $this->{DB}->errstr();
+    $this->unlock;
+    $this->changed;
+    return;
 }
 
 
 sub set_del_all
 {
-	my($this) = @_;
-	$this->lock;
-	my $statement = $DB->prepare($sql_del_all) || die $DB->errstr();
-	$statement->execute() || die $DB->errstr();
-	$this->unlock;
-	$this->changed;
-	return;
+    my($this) = @_;
+    $this->lock;
+    my $statement = $this->{DB}->prepare($this->{sql_del_all}) || die $this->{DB}->errstr();
+    $statement->execute() || die $this->{DB}->errstr();
+    $this->unlock;
+    $this->changed;
+    return;
 }
 
 sub set_recountnums {
-        my $this = shift;
+    my $this = shift;
 
-	$this->lock;
+    $this->lock;
 
-        my(@count, $i, $num, $setnum, $pos);
-        $setnum = 1;
-	$pos=0; $i=0; @count = ();
+    my(@count, $i, $num, $setnum, $pos);
+    $setnum = 1;
+    $pos=0; $i=0; @count = ();
 
-	my $statement = $DB->prepare($sql_incrnum) || die $DB->errstr();
-	$statement->execute || die $DB->errstr();
-        $statement->bind_columns(undef, \($num)) || die $DB->errstr();
-	# store real id's in an array!
-	while($statement->fetch) {
-		$count[$i] = $num;
-		$i++;
-	}
-	# now recount them! 
-	my $sub_statement = $DB->prepare($sql_setnum) || die $DB->errstr();
-	for($pos=0;$pos<$i;$pos++) {
-		$setnum = $pos +1;
-		$sub_statement->execute($setnum,$count[$pos]) || die $DB->errstr();
-	}
-        $this->unlock;
-        $this->changed;
+    my $statement = $this->{DB}->prepare($this->{sql_incrnum}) || die $this->{DB}->errstr();
+    $statement->execute || die $this->{DB}->errstr();
+    $statement->bind_columns(undef, \($num)) || die $this->{DB}->errstr();
+    # store real id's in an array!
+    while($statement->fetch) {
+	$count[$i] = $num;
+	$i++;
+    }
+    # now recount them! 
+    my $sub_statement = $this->{DB}->prepare($this->{sql_setnum}) || die $this->{DB}->errstr();
+    for($pos=0;$pos<$i;$pos++) {
+	$setnum = $pos +1;
+	$sub_statement->execute($setnum,$count[$pos]) || die $this->{DB}->errstr();
+    }
+    $this->unlock;
+    $this->changed;
 }
 
 sub uen
 {
-        my($T);
-        if($NOTEDB::crypt_supported == 1) {
-                eval {
-                        $T = pack("u", $cipher->encrypt($_[0]));
-                };
-        }
-	else {
-		$T = $_[0];
-	}
-        chomp $T;
-        return $T;
+    my $this = shift;
+    my($T);
+    if($NOTEDB::crypt_supported == 1) {
+	eval {
+	    $T = pack("u", $this->{cipher}->encrypt($_[0]));
+	};
+    }
+    else {
+	$T = $_[0];
+    }
+    chomp $T;
+    return $T;
 }
 
 sub ude
 {
-        my($T);
-        if($NOTEDB::crypt_supported == 1) {
-                eval {
-                        $T = $cipher->decrypt(unpack("u",$_[0]))
-                };
-        	return $T;
-	}
-	else {
-		return $_[0];
-	}
+    my $this = shift;
+    my($T);
+    if($NOTEDB::crypt_supported == 1) {
+	eval {
+	    $T = $this->{cipher}->decrypt(unpack("u",$_[0]))
+	};
+	return $T;
+    }
+    else {
+	return $_[0];
+    }
 }
 
 1; # keep this!

@@ -2,7 +2,7 @@
 # NOTEDB::mysql and NOTEDB::binary are internals
 # of note.
 #
-# $Id: Makefile.PL,v 1.1.1.1 2000/07/01 14:40:50 zarahg Exp $
+# $Id: Makefile.PL,v 1.2 2000/08/10 09:21:56 zarahg Exp $
 # 
 # check for the existence of optional modules:
 sub chk_mod

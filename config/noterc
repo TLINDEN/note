@@ -1,4 +1,4 @@
-# 1.0.8        -*- sh -*- 
+# 1.1.0        -*- sh -*- 
 # This is a sample config for the note script
 # There are useful defaults set in note itself.
 # 
@@ -35,6 +35,7 @@ DbDriver		binary
 
 # backend specific settings for sql backend
 #DbHost			localhost
+#DbPort
 #DbUser			you
 #DbPasswd
 #DbName			mynotes
@@ -164,6 +165,9 @@ ShortCd			0
 # this is currently only supported by the binary and the mysql backends
 # set it to 1 to turn it on, the default is 0 (off)
 Cache			0
+
+
+
 # That's all about it for now.
 # If you still have any questiosn, please feel free to contact
 # me by email: Thomas Linden <tom@daemon.de>

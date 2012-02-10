@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: binary.pm,v 1.1.1.1 2000/07/01 14:40:52 zarahg Exp $
+# $Id: binary.pm,v 1.3 2000/08/11 00:05:58 zarahg Exp $
 # Perl module for note
 # binary database backend. see docu: perldoc NOTEDB::binary
 #
@@ -14,185 +14,179 @@ use NOTEDB;
 use Fcntl qw(LOCK_EX LOCK_UN);
 
 
-# Globals:
-my ($NOTEDB, $sizeof, $typedef,$version);
-my ($cipher);
-
-$version = "(NOTEDB::binary, 1.6)";
-
 
 sub new
 {
-	my($this, $dbdriver, $dbname, $MAX_NOTE, $MAX_TIME) = @_;
+    my($this, $dbdriver, $dbname, $MAX_NOTE, $MAX_TIME) = @_;
 
-	my $class = ref($this) || $this;
-	my $self = {};
-	bless($self,$class);
-	$NOTEDB = $dbname;
+    my $class = ref($this) || $this;
+    my $self = {};
+    bless($self,$class);
 
-	if(! -e $NOTEDB)
-	{
-	        open(TT,">$NOTEDB") or die "Could not create $NOTEDB: $!\n";
-	        close (TT);
-	}
-	elsif(! -w $NOTEDB)
-	{
-	        print "$NOTEDB is not writable!\n";
-	        exit(1);
-	}
+    if(! -e $dbname) {
+	open(TT,">$dbname") or die "Could not create $dbname: $!\n";
+	close (TT);
+    }
+    elsif(! -w $dbname) {
+	print "$dbname is not writable!\n";
+	exit(1);
+    }
 
-	my $TYPEDEF = "i a$MAX_NOTE a$MAX_TIME";
-	my $SIZEOF  = length pack($TYPEDEF, () );
+    $self->{version} = "(NOTEDB::binary, 1.7)";
+    $self->{NOTEDB}  = $dbname;
+    my $TYPEDEF      = "i a$MAX_NOTE a$MAX_TIME";
+    my $SIZEOF       = length pack($TYPEDEF, () );
 
-	$sizeof = $SIZEOF;
-	$typedef = $TYPEDEF;
+    $self->{sizeof}  = $SIZEOF;
+    $self->{typedef} = $TYPEDEF;
 
-	return $self;
+    return $self;
 }
 
 
 sub DESTROY
 {
-	# clean the desk!
+    # clean the desk!
 }
 
 sub version {
-        return $version;
+    my $this = shift;
+    return $this->{version};
 }
 
 
 
 sub set_del_all
 {
-	unlink $NOTEDB;
-	open(TT,">$NOTEDB") or die "Could not create $NOTEDB: $!\n";
-	close (TT);
+    my $this = shift;
+    unlink $this->{NOTEDB};
+    open(TT,">$this->{NOTEDB}") or die "Could not create $this->{NOTEDB}: $!\n";
+    close (TT);
 }
 
 
 sub get_single {
-	my($this, $num) = @_;
-	my($address, $note, $date, $buffer, $n, $t, $buffer, );
+    my($this, $num) = @_;
+    my($address, $note, $date, $buffer, $n, $t, $buffer, );
 
-	open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX; 
+    open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
+    flock NOTE, LOCK_EX; 
 
-	$address = ($num-1) * $sizeof;
-	seek(NOTE, $address, IO::Seekable::SEEK_SET);
-	read(NOTE, $buffer, $sizeof);
-	($num, $n, $t) = unpack($typedef, $buffer);
+    $address = ($num-1) * $this->{sizeof};
+    seek(NOTE, $address, IO::Seekable::SEEK_SET);
+    read(NOTE, $buffer, $this->{sizeof});
+    ($num, $n, $t) = unpack($this->{typedef}, $buffer);
 
-	$note = ude($n);
-	$date = ude($t);
+    $note = $this->ude($n);
+    $date = $this->ude($t);
 
-	flock NOTE, LOCK_UN;
-        close NOTE;
+    flock NOTE, LOCK_UN;
+    close NOTE;
 
-	return $note, $date;
+    return $note, $date;
 }
 
 
 sub get_all
 {
-        my $this = shift;
-        my($num, $note, $date, %res);
+    my $this = shift;
+    my($num, $note, $date, %res);
 
-	if ($this->unchanged) {
-	    return %{$this->{cache}};
-	}
-	open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX;
-	my($buffer, $t, $n);
-	seek(NOTE, 0, 0); # START FROM BEGINNING
-	while(read(NOTE, $buffer, $sizeof)) {
-		($num, $note, $date) = unpack($typedef, $buffer);
-		$t = ude($date);
-                $n = ude($note);
-        	$res{$num}->{'note'} = $n;
-		$res{$num}->{'date'} = $t;
-	}
-	flock NOTE, LOCK_UN;
-        close NOTE;
+    if ($this->unchanged) {
+	return %{$this->{cache}};
+    }
+    open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
+    flock NOTE, LOCK_EX;
+    my($buffer, $t, $n);
+    seek(NOTE, 0, 0); # START FROM BEGINNING
+    while(read(NOTE, $buffer, $this->{sizeof})) {
+	($num, $note, $date) = unpack($this->{typedef}, $buffer);
+	$t = $this->ude($date);
+	$n = $this->ude($note);
+	$res{$num}->{'note'} = $n;
+	$res{$num}->{'date'} = $t;
+    }
+    flock NOTE, LOCK_UN;
+    close NOTE;
 
-	$this->cache(%res);
-	return %res;
+    $this->cache(%res);
+    return %res;
 }
 
 
 sub get_nextnum
 {
-        my $this = shift;
-	my($num, $te, $me, $buffer);
+    my $this = shift;
+    my($num, $te, $me, $buffer);
 
-	if ($this->unchanged) {
-	    $num = 1;
-	    foreach (keys %{$this->{cache}}) {
-		$num++;
-	    }
-	    return $num;
+    if ($this->unchanged) {
+	$num = 1;
+	foreach (keys %{$this->{cache}}) {
+	    $num++;
 	}
-	open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX;
-
-	seek(NOTE, 0, 0); # START FROM BEGINNING
-	while(read(NOTE, $buffer, $sizeof)) {
-		($num, $te, $me) = unpack($typedef, $buffer);
-	}
-	$num += 1;
-	flock NOTE, LOCK_UN;
-        close NOTE;
-
 	return $num;
+    }
+    open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
+    flock NOTE, LOCK_EX;
+
+    seek(NOTE, 0, 0); # START FROM BEGINNING
+    while(read(NOTE, $buffer, $this->{sizeof})) {
+	($num, $te, $me) = unpack($this->{typedef}, $buffer);
+    }
+    $num += 1;
+    flock NOTE, LOCK_UN;
+    close NOTE;
+
+    return $num;
 }
 
 sub get_search
 {
-	my($this, $searchstring) = @_;
-	my($buffer, $num, $note, $date, %res, $t, $n, $match);
+    my($this, $searchstring) = @_;
+    my($buffer, $num, $note, $date, %res, $t, $n, $match);
 
-	my $regex = $this->generate_search($searchstring);
-	eval $regex;
-	if ($@) {
-	  print "invalid expression: \"$searchstring\"!\n";
-	  return;
-	}
-	$match = 0;
+    my $regex = $this->generate_search($searchstring);
+    eval $regex;
+    if ($@) {
+	print "invalid expression: \"$searchstring\"!\n";
+	return;
+    }
+    $match = 0;
 
-	if ($this->unchanged) {
-	    foreach my $num (keys %{$this->{cache}}) {
-		$_ = $this->{cache}{$num}->{note};
-		eval $regex;
-		if ($match) {
-		    $res{$num}->{note} = $this->{cache}{$num}->{note};
-		    $res{$num}->{date} = $this->{cache}{$num}->{date}
-		}
-		$match = 0;
+    if ($this->unchanged) {
+	foreach my $num (keys %{$this->{cache}}) {
+	    $_ = $this->{cache}{$num}->{note};
+	    eval $regex;
+	    if ($match) {
+		$res{$num}->{note} = $this->{cache}{$num}->{note};
+		$res{$num}->{date} = $this->{cache}{$num}->{date}
 	    }
-	    return %res;
+	    $match = 0;
 	}
-
-        open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX;
-
-	seek(NOTE, 0, 0); # START FROM BEGINNING
-	while(read(NOTE, $buffer, $sizeof))
-	{
-		($num, $note, $date) = unpack($typedef, $buffer);
-		$n = ude($note);
-                $t = ude($date);
-		$_ = $n;
-		eval $regex;
-                if($match)
-                {
-			$res{$num}->{'note'} = $n;
-                	$res{$num}->{'date'} = $t;
-		}
-		$match = 0;
-	}
-        flock NOTE, LOCK_UN;
-        close NOTE;
-
 	return %res;
+    }
+
+    open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
+    flock NOTE, LOCK_EX;
+
+    seek(NOTE, 0, 0); # START FROM BEGINNING
+    while(read(NOTE, $buffer, $this->{sizeof})) {
+	($num, $note, $date) = unpack($this->{typedef}, $buffer);
+	$n = $this->ude($note);
+	$t = $this->ude($date);
+	$_ = $n;
+	eval $regex;
+	if($match)
+	  {
+	      $res{$num}->{'note'} = $n;
+	      $res{$num}->{'date'} = $t;
+	  }
+	$match = 0;
+    }
+    flock NOTE, LOCK_UN;
+    close NOTE;
+
+    return %res;
 }
 
 
@@ -200,132 +194,135 @@ sub get_search
 
 sub set_edit
 {
-	my($this, $num, $note, $date) = @_;
-	my $address = ($num -1 ) * $sizeof;
+    my($this, $num, $note, $date) = @_;
+    my $address = ($num -1 ) * $this->{sizeof};
 
-        open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX;
+    open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
+    flock NOTE, LOCK_EX;
 
-	seek(NOTE, $address, IO::Seekable::SEEK_SET);
-	my $n = uen($note);
-	my $t = uen($date);
+    seek(NOTE, $address, IO::Seekable::SEEK_SET);
+    my $n = $this->uen($note);
+    my $t = $this->uen($date);
 
-	my $buffer = pack($typedef, $num, $n, $t);
-        print NOTE $buffer;
+    my $buffer = pack($this->{typedef}, $num, $n, $t);
+    print NOTE $buffer;
 
-        flock NOTE, LOCK_UN;
-        close NOTE;
+    flock NOTE, LOCK_UN;
+    close NOTE;
 
-	$this->changed;
+    $this->changed;
 }
 
 
 sub set_new
 {
-	my($this, $num, $note, $date) = @_;
-        open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX; 
+    my($this, $num, $note, $date) = @_;
+    open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
+    flock NOTE, LOCK_EX;
 
-	seek(NOTE, 0, IO::Seekable::SEEK_END); # APPEND
-        my $n = uen($note);
-        my $t = uen($date);
-	my $buffer = pack($typedef, $num, $n, $t);
-	print NOTE $buffer;
+    seek(NOTE, 0, IO::Seekable::SEEK_END); # APPEND
+    my $n = $this->uen($note);
+    my $t = $this->uen($date);
+    my $buffer = pack($this->{typedef}, $num, $n, $t);
+    print NOTE $buffer;
 
-	flock NOTE, LOCK_UN;
-        close NOTE;
+    flock NOTE, LOCK_UN;
+    close NOTE;
 
-	$this->changed;
+    $this->changed;
 }
 
 
 sub set_del
 {
-        my($this, $num) = @_;
-	my(%orig, $note, $date, $T, $setnum, $buffer, $n, $N, $t);
+    my($this, $num) = @_;
+    my(%orig, $note, $date, $T, $setnum, $buffer, $n, $N, $t);
 
-        $setnum = 1;
+    $setnum = 1;
 
-	%orig = $this->get_all();
-	return "ERROR" if (! exists $orig{$num});
+    %orig = $this->get_all();
+    return "ERROR" if (! exists $orig{$num});
 
-	delete $orig{$num};
+    delete $orig{$num};
 
-	# overwrite, but keep number!
-	open NOTE, ">$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX; 
-        seek(NOTE, 0, 0); # START FROM BEGINNING
-	foreach $N (keys %orig) {
-		$n = uen($orig{$N}->{'note'});
-		$t = uen($orig{$N}->{'date'});
-		$buffer = pack( $typedef, $N, $n, $t); # keep orig number, note have to call recount!
-		print NOTE $buffer;
-		seek(NOTE, 0, IO::Seekable::SEEK_END);
-		$setnum++;
-	}
-        flock NOTE, LOCK_UN;
-        close NOTE;
+    # overwrite, but keep number!
+    open NOTE, ">$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
+    flock NOTE, LOCK_EX; 
+    seek(NOTE, 0, 0); # START FROM BEGINNING
+    foreach $N (keys %orig) {
+	$n = $this->uen($orig{$N}->{'note'});
+	$t = $this->uen($orig{$N}->{'date'});
+	$buffer = pack( $this->{typedef}, $N, $n, $t);
+	# keep orig number, note have to call recount!
+	print NOTE $buffer;
+	seek(NOTE, 0, IO::Seekable::SEEK_END);
+	$setnum++;
+    }
+    flock NOTE, LOCK_UN;
+    close NOTE;
 
-	$this->changed;
+    $this->changed;
 
-	return;
+    return;
 }
 
 sub set_recountnums
 {
-	my($this) = @_;
-	my(%orig, $note, $date, $T, $setnum, $buffer, $n, $N, $t);
+    my($this) = @_;
+    my(%orig, $note, $date, $T, $setnum, $buffer, $n, $N, $t);
 
-	$setnum = 1;
-	%orig = $this->get_all();
+    $setnum = 1;
+    %orig = $this->get_all();
 
-	open NOTE, ">$NOTEDB" or die "could not open $NOTEDB\n";
-	flock NOTE, LOCK_EX;
-	seek(NOTE, 0, 0); # START FROM BEGINNING
+    open NOTE, ">$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
+    flock NOTE, LOCK_EX;
+    seek(NOTE, 0, 0); # START FROM BEGINNING
 
-        foreach $N (sort {$a <=> $b} keys %orig) {
-                $n = uen($orig{$N}->{'note'});
-                $t = uen($orig{$N}->{'date'});
-                $buffer = pack( $typedef, $setnum, $n, $t);
-                print NOTE $buffer;
-                seek(NOTE, 0, IO::Seekable::SEEK_END);
-                $setnum++;
-        }
-	flock NOTE, LOCK_UN;
-	close NOTE;
+    foreach $N (sort {$a <=> $b} keys %orig) {
+	$n = $this->uen($orig{$N}->{'note'});
+	$t = $this->uen($orig{$N}->{'date'});
+	$buffer = pack( $this->{typedef}, $setnum, $n, $t);
+	print NOTE $buffer;
+	seek(NOTE, 0, IO::Seekable::SEEK_END);
+	$setnum++;
+    }
+    flock NOTE, LOCK_UN;
+    close NOTE;
 
-	$this->changed;
+    $this->changed;
 
-        return;
+    return;
 }
 
 sub uen
 {
-	my($T);
-	if($NOTEDB::crypt_supported == 1) {
-		eval {
-			$T = pack("u", $cipher->encrypt($_[0]));
-		};
-	}
-	else {
-    		$T = pack("u", $_[0]);
-	}
-    	chomp $T;
-    	return $T;
+    my $this = shift;
+    my($T);
+    if($NOTEDB::crypt_supported == 1) {
+	eval {
+	    $T = pack("u", $this->{cipher}->encrypt($_[0]));
+	};
+    }
+    else {
+	$T = pack("u", $_[0]);
+    }
+    chomp $T;
+    return $T;
 }
 
 sub ude
 {
-	my($T);
-	if($NOTEDB::crypt_supported == 1) {
-		eval {
-			$T = $cipher->decrypt(unpack("u",$_[0]));
-		};
-	}
-	else {
-		$T = unpack("u", $_[0]);
-	}
-	return $T;
+    my $this = shift;
+    my($T);
+    if($NOTEDB::crypt_supported == 1) {
+	eval {
+	    $T = $this->{cipher}->decrypt(unpack("u",$_[0]));
+	};
+    }
+    else {
+	$T = unpack("u", $_[0]);
+    }
+    return $T;
 }
 
 

@@ -29,6 +29,9 @@ CHANGED:	use "unshift" instead of push to add $libpath to @INC.
 ADDED:		a new feature, Caching of notes. supported by binary.pm and
 		mysql.pm. To turn it on, one need to set "Cache" in the config
 		to a true value.
+CHANGED:	oop-ized and re-indented the modules dbm.pm, mysql.pm and
+		binary.pm.
+ADDED:		You can now specify a port for the mysql backend ("DbPort").
 
 ================================================================================
 
