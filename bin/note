@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 # note - console notes management with database and encryption support.
-# Copyright (C) 1999-2009 Thomas Linden   (see README for details!)
+# Copyright (C) 1999-2012 Thomas Linden   (see README for details!)
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -140,7 +140,7 @@ $CONF 		= File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
 $TOPIC 		= 1;
-$version 	= "1.3.6";
+$version 	= "1.3.9";
 $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 $maxlen         = "auto";
 $timelen        = 22;
@@ -212,7 +212,7 @@ else {
 	      "longtopic|T!"	     => \$opt_T, # no arg
 	      "list|l:s"	     => \$opt_l, # string,  optional
 	      "longlist|L:s"	     => \$opt_L, # string,  optional
-	      "dump||Dump|D:s"       => \$opt_D, # string,  optional
+	      "dump|Dump|D:s"       => \$opt_D, # string,  optional
 	      "import|Import|I:s"    => \$opt_I, # string,  optional
 	      "overwrite|o!"	     => \$opt_o, # no arg
 	      "help|h|?!"	     => \$opt_h, # no arg
@@ -254,7 +254,7 @@ else {
     $number = $opt_e;
   }
   elsif ($opt_d) {
-    $mode = "delete";
+    $mode = "del";
     $number = $opt_d;
   }
   elsif ($opt_enc) {
@@ -780,9 +780,9 @@ sub new {
   }
 
 sub add_ticket {
-	my $note = shift;
+	my $orignote = shift;
 	if ($conf{addticket}) {
-	  my ($topic, $title, $rest) = split /\n/, $note, 3;
+	  my ($topic, $title, $rest) = split /\n/, $orignote, 3;
 	  my $note = "";
 	  if ($topic =~ /^\//) {
 	    # topic path, keep it
@@ -799,8 +799,11 @@ sub add_ticket {
 	    $title = "[" . ticket() . "] " . $title;
 	  }
 	  $note .= "$title\n$rest";
+	  return $note;
 	}
-	return $note;
+        else {
+	  return $orignote;
+        }
 }
 
 
