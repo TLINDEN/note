@@ -35,6 +35,7 @@ no strict 'refs';
 use Getopt::Long;
 use FileHandle;
 use File::Spec;
+use YAML;
 #use Data::Dumper;
 
 
@@ -140,7 +141,7 @@ $CONF 		= File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
 $TOPIC 		= 1;
-$version 	= "1.3.9";
+$version 	= "1.3.10";
 $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 $maxlen         = "auto";
 $timelen        = 22;
@@ -909,7 +910,6 @@ sub edit {
     $db->unlock();
   }
 
-
 sub dump {
     my(%res, $num, $DUMP);
     # $dump_file
@@ -922,16 +922,24 @@ sub dump {
     }
     select $DUMP;
     %res = $db->get_all();
+    # FIXME: prepare hashing in NOTEDB class
     foreach $num (sort { $a <=> $b } keys %res) {
       print STDOUT "dumping note number $num to $dump_file\n" if($dump_file ne "-");
-      print "Number: $num\n"
-	   ."Timestamp: $res{$num}->{'date'}\n"
-	   ."$res{$num}->{'note'}\n";
+      my($title, $path, $body);
+      if ($res{$num}->{note} =~ /^\//) {
+        ($path, $title, $body) = split /\n/, $res{$num}->{note}, 3;
+      }
+      else {
+        ($title, $body) = split /\n/, $res{$num}->{note}, 2;
+        $path = '';
+      }
+      my $date = $res{$num}->{date};
+      $res{$num} = { body => $body, title => $title, path => $path, date => $date};
     }
-    print "\n";
+    print Dump(\%res);
     close(DUMPFILE);
     select STDOUT;
-  }
+}
 
 sub import {
     my($num, $start, $complete, $dummi, $note, $date, $time, $number, $stdin, $DUMP, %data);
@@ -945,50 +953,31 @@ sub import {
       $DUMP = *DUMPFILE;
     }
 
-    $complete = $start = 0;
-    $number = 1;
-    while (<$DUMP>) {
-      chomp $_;
-      if ($_ =~ /^Number:\s\d+/) {
-	if ($start == 0) {
-	  # we have no previous record
-	  $start = 1;
-	}
-	else {
-	  # we got a complete record, save it!
-	  $data{$number} = {
-			    date => $date,
-			    note => &add_ticket($note)
-			    };
-	  print "fetched note number $number from $dump_file from $date.\n" if(!$stdin);
-	  $complete = 0;
-	  $note = "";
-	  $date = "";
-	  $number++;
-	}
-      }
-      elsif ($_ =~ /^Timestamp:\s\d+/ && $complete == 0) {
-	($dummi,$date,$time) = split(/\s/,$_);
-	$date = "$date $time";
-	$complete = 1;
+    my $yaml = join '', <$DUMP>;
+
+    my $res = Load($yaml);
+
+    foreach my $number (keys %{$res}) {
+      my $note;
+      if ($res->{$number}->{path}) {
+        $note = "$res->{$number}->{path}\n$res->{$number}->{title}\n$res->{$number}->{body}";
       }
       else {
-	$note .= $_ . "\n";
+        $note = "$res->{$number}->{title}\n$res->{$number}->{body}";
       }
-    }
-
-    if ($note ne "" && $date ne "") {
-      # the last record, if existent
       $data{$number} = {
-			date => $date,
-			note => &add_ticket($note)
-		       };
-      print "fetched note number $number from $dump_file from $date.\n" if(!$stdin);
+                        date => $res->{$number}->{date},
+                        note => &add_ticket($note)
+                       };
+      print "fetched note number $number from $dump_file from $res->{$number}->{date}.\n" if(!$stdin);
+      $number++;
     }
 
     $db->set_del_all() if($ImportType ne "");
     $db->import_data(\%data);
 }
+
+
 
 sub determine_width {
   # determine terminal wide, if possible

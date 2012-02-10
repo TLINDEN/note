@@ -4,12 +4,12 @@
 
 package NOTEDB::general;
 
-$NOTEDB::general::VERSION = "1.01";
+$NOTEDB::general::VERSION = "1.02";
 
 use strict;
 #use Data::Dumper;
 use File::Spec;
-use Config::General;
+use Config::General qw(ParseConfig SaveConfig SaveConfigString);
 use MIME::Base64;
 use FileHandle;
 use NOTEDB;
