@@ -1,4 +1,4 @@
-  # note 1.3.1        -*- sh -*- 
+  # note 1.3.3        -*- sh -*- 
   #
   # This is a sample config for the note script
   # There are useful defaults set in note itself.
@@ -231,6 +231,13 @@ TimeFormat = DD.MM.YYYY hh:mm:ss
 ReadOnly = NO
 
 
+
+  #
+  # Note separates titles and topics using horizontal lines when
+  # listing them. You can turn off this behavior by setting
+  # PrintLines to NO.
+  # The default is: YES
+PrintLines = YES
 
 
   #

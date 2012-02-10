@@ -1,3 +1,12 @@
+1.3.3:
+ADDED:          new configfile parameter PrintLines (default: YES), which
+                controls wether listings are separated by horizontal lines.
+================================================================================
+1.3.2:
+FIXED:          NOTEDB::mysql backend parameter fixed (dbtype)
+FIXED:          NOTEDB::mysql didn't fetch topics correctly
+FIXED:          NOTEDB::text didn't correctly return last highest note id
+================================================================================
 1.3.1:
 FIXED:          most config variables not related to drivers had
 	 	invalid sentence in note, so the new ones of the new config

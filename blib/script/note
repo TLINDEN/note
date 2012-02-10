@@ -1,4 +1,7 @@
 #!/usr/bin/perl
+
+eval 'exec /usr/bin/perl  -S $0 ${1+"$@"}'
+    if 0; # not running under some shell
 #
 # note - console notes management with database and encryption support.
 # Copyright (C) 1999-2004 Thomas Linden   (see README for details!)
