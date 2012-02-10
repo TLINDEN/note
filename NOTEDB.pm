@@ -2,12 +2,12 @@
 # this is a generic module, used by note database
 # backend modules.
 #
-# $Id: NOTEDB.pm,v 1.2 2000/08/11 00:05:58 zarahg Exp $
-#
-# Copyright (c) 2000 Thomas Linden <tom@daemon.de>
+# Copyright (c) 2000-2003 Thomas Linden <tom@daemon.de>
 
 
 package NOTEDB;
+
+$NOTEDB::VERSION = "1.3";
 
 BEGIN {
     # make sure, it works, otherwise encryption

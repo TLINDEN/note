@@ -1,4 +1,41 @@
 ================================================================================
+1.2.0:
+CHANGED:        using Makemaker instead of self-written code in Makefile.PL
+                for installation. No more dependency checks built-in because
+                note runs out-of-the-box without additional modules, as a matter fact.
+ADDED:          if a search matches exactly on one note it will be displayed
+                directly, which avoids typing.
+CHANGED:        the main if-else contruct for calling the several subs has
+                been replaced by a simple closure call.
+CHANGED:        notes will now displayed in a slightly simpler fashion in interactive
+		mode, without the separator line between the title and the note.
+ADDED:		note can now determine automatically the width and height of
+		the terminal window it runs in (in interactive mode only) and
+		sets the width/height of what it prints accordingly. the config
+		variable "MaxLen" must be set to "auto" (which is the default
+		from now on) to get this to work.
+ADDED:          any interactive command will now clear the screen before it does
+		anything. this look much more uncluttered.
+ADDED:          if multiple notes are printed at once (i.e. note 1,2) then the
+		separator line between them will no more being printed because
+		every notes title is preceded by a line anyway.
+CHANGED:	by default the default operation mode is now interactive mode,
+		which is somewhat kindlier to new users.
+CHANGED:	changed to order which editor note tries to find. vi got now
+		higher precedence, because it is likely installed on almost 
+		any unix system.
+CHANGED:        cosmetics.
+NOTE:		increased minor version number from 1 to 2 to indicate that
+		development begun after 2 1/2 years pause again :-)
+
+================================================================================
+
+1.1.2:
+FIXED:		Empty notes will no longer stored.
+ADDED:		A new config option which allows you to specify a time format
+		other than the default one which is used by note.
+
+================================================================================
 
 1.1.1:
 FIXED:		Some odd typos in README and note.pod.

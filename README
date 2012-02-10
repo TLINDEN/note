@@ -1,4 +1,4 @@
-note 1.1.1 by Thomas Linden, 20/08/2000
+note 1.2.0 by Thomas Linden, 28/02/2003
 =======================================
 
 Introduction
@@ -28,9 +28,7 @@ Where to get?
 =============
 
 	By now at 
-		http://www.daemon.de/software.html 
-	or
-		ftp://www.0c49.org/pub/scip/note/
+		http://www.daemon.de/note/
 	
 	You may also try your nearest tucows mirror.
 
@@ -362,7 +360,7 @@ Cache
 	A "%" character at the top left of the screen indicates that
 	the cache is in use.
 	I consider you not to use the cache feature if you are using
-	multiple instances of note using the same database.
+	multiple instances of note accessing the same database.
 	The cache is turned off by default. 
 
 
@@ -396,7 +394,7 @@ Scripting
 	Another thingy you might find useful is the -r (--raw) command-line
 	flag. This turns note into raw mode , which means it will only print the
 	data without any formatting. Raw mode is available for list and display,
-	since it makes no sense, interactive mode doe not support raw mode.
+	since it makes no sense, interactive mode does not support raw mode.
 
 
 	
@@ -539,6 +537,7 @@ Security
 	This means an attacker could access your (unencrypted!) notes. 
 
 
+
 Comments
 ========
 
@@ -564,7 +563,7 @@ Recources
 
 	The command-line options and all commands of the interactive mode are
 	described in the supplied note(1) manpage.
-	You may also refer to the note website http://www.0x49.org.
+	You may also refer to the note website http://www.daemon.de/note/.
 
 
 
@@ -582,7 +581,7 @@ Author and Copyright
 Contributors / Credits
 ======================
 
-	Shouts to those guys who helped me to enhance note: THANKS A LOT!
+	Shouts to all those guys who helped me to enhance note: THANKS A LOT!
 
 	Jens Heunemann <jens.heunemann@consol.de>	- sub tree.
 	Peter Palmreuther				- various additions.
@@ -596,4 +595,4 @@ Contributors / Credits
 Last changed
 ============
 
-	20/08/2000	
+	28/02/2003

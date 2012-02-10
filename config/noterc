@@ -1,4 +1,4 @@
-# 1.1.0        -*- sh -*- 
+# 1.1.2        -*- sh -*- 
 # This is a sample config for the note script
 # There are useful defaults set in note itself.
 # 
@@ -77,8 +77,8 @@ CryptMethod		IDEA
 
 # You can run note always in interactive mode by simply
 # typing "note". Set this option to 1 to turn it on.
-# The default is 0 (off).
-AlwaysInteractive	0
+# The default is 1 (on).
+AlwaysInteractive	1
 
 
 # In interactive mode, note issues a list command if you 
@@ -115,9 +115,9 @@ TopicSeparator		/
 
 # The maximum width for displaying a note, in CHARS.
 # Depends on your screen-size. You can set it to 
-# "auto", if you wish that note sould determine the
-# available size, but it experimental, be aware!
-MaxLen			30
+# "auto", if you wish that note should determine the
+# available size.
+MaxLen			auto
 
 
 # note can use colors for output, set this option to
@@ -165,6 +165,22 @@ ShortCd			0
 # this is currently only supported by the binary and the mysql backends
 # set it to 1 to turn it on, the default is 0 (off)
 Cache			0
+
+
+
+# you can define your very own time format for time stamps
+# YY   - the last 2 digits of a year
+# YYYY - year
+# MM   - month
+# DD   - day
+# hh   - hours
+# mm   - minutes
+# ss   - seconds
+# This is the default: (18.10.2000 21:32:08)
+TimeFormat             DD.MM.YYYY hh:mm:ss 
+
+
+
 
 
 
