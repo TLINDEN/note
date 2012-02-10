@@ -1,5 +1,19 @@
 ==================================================================================
 
+0.7:
+ADDED:		one can now use the unix-like "cd" command to change to another 
+		topic, thus use "cd topicname" instead just typing "topicname"!
+FIXED:		there was a smal regex bug which maked it impossible to use such 
+		topics: "4 test", in such a case note just displayed note number 4
+		instead of cd'ing to topic "4 test".
+ADDED:		a new config option "$KEEP_TIMESTAMP" allows a user to disable 
+		note's default behavior of updating the timestamp of a note after
+		editing it.
+
+
+
+==================================================================================
+
 
 0.6:
 FIXED:		oops - the new suptopic feature confused the commandline-mode of

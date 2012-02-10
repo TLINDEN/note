@@ -1,4 +1,27 @@
 #!/usr/bin/perl
+# $Author: tom $ $Id: note.mysql,v 1.7 2000/03/08 23:11:19 tom Exp tom $ $Revision: 1.7 $
+# 
+# $Log: note.mysql,v $
+# Revision 1.7  2000/03/08 23:11:19  tom
+# added cd
+#
+# Revision 1.6  2000/03/08 22:50:41  tom
+# Added the $KEEP_TIMESTAMP option and fixed a bug regarding topic names
+# and invalid resolution of them in case it started with "1 name".
+#
+# Revision 1.5  2000/02/25 20:59:30  tom
+# corrected small timestamp problem in &edit and &new
+#
+# Revision 1.4  2000/02/25 13:24:11  tom
+# fixed a small bug, that caused to use the last line for a note title instead the 2nd.
+#
+# Revision 1.3  2000/02/25 11:28:53  tom
+# all changes from bin version applied to sql version
+#
+# Revision 1.2  2000/02/25 10:30:06  tom
+# *** empty log message ***
+#
+#
 # this is the small console program "note" (MYSQL version)
 # It works similar to some well known GUI note programs,
 # but instead of using X11 it uses the UN*X console.
@@ -17,6 +40,38 @@
 # note is GPL software.
 
 use Mysql;
+use strict;
+use Data::Dumper;
+
+sub usage;
+sub find_editor;
+sub output;
+sub C;
+sub uen;
+sub ude;
+sub num_bereich;
+sub getdate;
+
+sub new;
+sub edit;
+sub del;
+sub display;
+sub list;
+sub help;
+sub import;
+
+my (
+        $maxlen, $timelen, $TOPIC, $TYPE, $mode, $NOTEDB,
+        $version, $number, $CurTopic, $CurDepth, $PATH, $CONF,
+        $sizeof, $MAX_TIME, $PreferredEditor, %TP, $TopicSep,
+        $ListType, $searchstring, $dump_file, $ALWAYS_INT, $KEEP_TIMESTAMP,
+        $BORDERC, $BORDER_COLOR, $_BORDERC, $NOTEC, $NOTE_COLOR,
+        $NUMC, $NUM_COLOR, $_NUMC, $_NOTEC, $TIMEC, $TIME_COLOR,
+        $_TIMEC, $TOPICC, $TOPIC_COLOR, $_TOPICC, $SetTitle, $COLOR,
+        $typedef, $MAX_NOTE, $MAX_TIME, @NumBlock, $ALWAYS_EDIT, $HOME,
+	$db, $dbname, $dbhost, $DEFAULTDBNAME, $dbuser, $USER, $dbpasswd,
+	$table, $fnum, $fnote, $fdate, $date
+   );
 
 ##################################
 # define some default values.
@@ -25,8 +80,7 @@ use Mysql;
 $maxlen = 20;
 $timelen = 22;
 
-$date = `date +%e\".\"%m\".\"%Y\" \"%T`;
-chomp $date;
+$date = &getdate;
 
 $USER = getlogin || getpwuid($<);
 chomp $USER;
@@ -56,26 +110,21 @@ $BORDER_COLOR = "BLACK";
 $NUM_COLOR    = "blue";
 $NOTE_COLOR   = "magenta";
 $TIME_COLOR   = "black";
+$TOPIC_COLOR = "BLACK";
+
+# Turns Topic Support on
+$TOPIC = 1;
+
+# Default topic separator: \
+$TopicSep = '/';
+
+$version = "0.7 (mysql database)";
+
+if($TOPIC)
+{
+    $CurDepth = 1; # the current depth inside the topic "directory" structure...
+}
 ###################################
-
-
-sub usage;
-sub find_editor;
-sub output;
-sub C;
-sub uen;
-sub ude;
-sub num_bereich;
-
-sub new;
-sub edit;
-sub del;
-sub display;
-sub list;
-sub help;
-
-
-$version = "0.4 (mysql database)";
 
 # process command line args
 if($ARGV[0] eq "")
@@ -98,22 +147,26 @@ else
                 }
                 $ARGV[0] = "";
         }
-		elsif($ARGV[0] eq "-i" || $ARGV[0] eq "--interactive")
-		{
-				$mode = "interactive";
-				$ARGV[0] = "";
-		}
+	elsif($ARGV[0] eq "-i" || $ARGV[0] eq "--interactive")
+	{
+		$mode = "interactive";
+		$ARGV[0] = "";
+	}
         elsif($ARGV[0] eq "-l" || $ARGV[0] eq "--list")
         {
                 $mode = "list";
+                my @ArgTopics = split /$TopicSep/,$ARGV[1];
+                $CurDepth += $#ArgTopics + 1 if $ARGV[1];
+                $CurTopic = $ArgTopics[$#ArgTopics]; # use the last element everytime...
                 $ARGV[0] = "";
         }
-		elsif($ARGV[0] eq "-L" || $ARGV[0] eq "--longlist")
-		{
-				$mode = "list";
-				$ListType = "LONG";
-                $ARGV[0] = "";
-		}
+	elsif($ARGV[0] eq "-L" || $ARGV[0] eq "--longlist")
+	{
+		$mode = "list";
+		$ListType = "LONG";
+		$CurTopic = $ARGV[1];
+       		$ARGV[0] = "";
+	}
         elsif($ARGV[0] eq "-s" || $ARGV[0] eq "--search")
         {
                 # searching
@@ -148,15 +201,31 @@ else
                         shift;
                 }
         }
-		elsif($ARGV[0] eq "-D" || $ARGV[0] eq "--Dump" || $ARGV[0] eq "--dump")
+	elsif($ARGV[0] eq "-D" || $ARGV[0] eq "--Dump" || $ARGV[0] eq "--dump")
+	{
+		$mode = "dump";
+		$dump_file = $ARGV[1];
+		$ARGV[0] = "";
+		if($dump_file eq "")
 		{
-				$mode = "dump";
-				$dump_file = $ARGV[1];
-				$ARGV[0] = "";
+			$dump_file = "note.dump.$$";
+			print "not dumpfile specified, using $dump_file.\n";
 		}
+	}
+	elsif($ARGV[0] eq "-I" || $ARGV[0] eq "--Import" || $ARGV[0] eq "--import")
+        {
+                $mode = "import";
+                $dump_file = $ARGV[1];
+                $ARGV[0] = "";
+                if($dump_file eq "")
+                {
+                        print "No dumpfile specified.\n";
+                        exit(1);
+                }
+        }
         elsif($ARGV[0] eq "-v" || $ARGV[0] eq "--version")
         {
-                print "This is note $version from Thomas Linden <tom\@daemon.de>.\n";
+                print "This is note $version by Thomas Linden <tom\@daemon.de>.\n";
                 exit(0);
         }
         elsif($ARGV[0] eq "-h" || $ARGV[0] eq "--help")
@@ -183,7 +252,7 @@ if(-e $CONF)
 
 
 # Always interactive?
-if($ALWAYS_INT eq "YES")
+if($ALWAYS_INT eq "YES" && $mode ne "dump" && $mode ne "import")
 {
 	$mode = "interactive";
 }
@@ -198,23 +267,22 @@ $NOTEC    = "<$NOTE_COLOR>";
 $_NOTEC   = "</$NOTE_COLOR>";
 $TIMEC    = "<$TIME_COLOR>";
 $_TIMEC   = "</$TIME_COLOR>";
-
-$time = `date +%d\".\"%m\".\"%Y\" \"%T`;
-chomp $time;
-
-$typedef = "i a$MAX_NOTE a$MAX_TIME";
-$sizeof  = length pack($typedef, () );
+$TOPICC   = "<$TOPIC_COLOR>";
+$_TOPICC  = "</$TOPIC_COLOR>";
 
 
-if($ListType ne "LONG")
+
+if($ListType ne "LONG" && $mode ne "interactive")
 {
      $maxlen += $timelen; # no time will be displayed!
 }
 
 
+
 # ok, if still here, we got it all, now let's connect to the database
 $db = Mysql->connect($dbhost,$dbname,$dbuser,$dbpasswd)
 	or die "ERROR: $Mysql::dberrstr\n";
+
 
 
 # main loop: ###############
@@ -246,6 +314,10 @@ elsif($mode eq "dump")
 {
 	&dump;
 }
+elsif($mode eq "import")
+{
+	&import;
+}
 elsif($mode eq "interactive")
 {
 	&interactive;
@@ -264,6 +336,7 @@ exit(0);
 ############################### DISPLAY ##################################
 sub display
 {
+    my($N,$address,$buffer,$n,$t,$match,$note,$time,$num,@row,$res);
 	# display a certain note
 	print "\n";
 	&num_bereich; # get @NumBlock from $numer
@@ -271,7 +344,7 @@ sub display
 	{
 		$res = $db->query("SELECT $fnote,$fdate FROM $table WHERE $fnum = $N")
 			or die "ERROR: $Mysql::dberrstr\n";
-		
+		while(@row = $res->fetchrow)
 		{
 			output($N, $row[0], $row[1], "SINGLE");
 			print "\n";		
@@ -286,6 +359,7 @@ sub display
 ############################### SEARCH ##################################
 sub search
 {
+    my($n,$t,$match,$note,$time,$num,$buffer,@row,$res, $sqlstatement);
 	$maxlen += $timelen;
 	if($searchstring eq "")
 	{
@@ -317,14 +391,107 @@ sub search
 ############################### LIST ##################################
 sub list
 {
+	my(@topic,@RealTopic, $i,$buffer,$t,$n,$num,$note,$time,@CurItem,$top,$in, $res, @row);
+	if($mode ne "interactive")
+        {
+                print "List of all existing notes:\n\n";
+        }
+
 	# list all available notes (number and firstline)
 	$res = $db->query("SELECT $fnum,$fnote,$fdate FROM $table ORDER BY $fnum") 
 		or die "ERROR: $Mysql::dberrstr\n";
+	if($TOPIC)
+        {
+                undef %TP;
+        }
+
     	while(@row = $res->fetchrow)
     	{
-    		output($row[0], $row[1], $row[2]);
-    	}
-	
+    		#output($row[0], $row[1], $row[2]);
+		$num = $row[0]; $n = $row[1]; $t = $row[2];
+		if($TOPIC)
+                {
+                        # this allows us to have multiple topics (subtopics!)
+                        my ($firstline,$dummy) = split /\n/, $n, 2;
+                        if($firstline =~ /^($TopicSep)/)
+                        {
+                                @topic = split(/$TopicSep/,$firstline);
+                        }
+                        else
+                        {
+                                @topic = ();
+                        }
+                        # looks like: "\topic\"
+                        # collect a list of topics under the current topic
+                        if($topic[$CurDepth-1] eq $CurTopic && $topic[$CurDepth] ne "")
+                        {
+                                if(exists $TP{$topic[$CurDepth]})
+                                {
+                                        $TP{$topic[$CurDepth]}++;
+                                }
+                                else
+                                {
+                                        # only if the next item *is* a topic!
+                                        $TP{$topic[$CurDepth]} = 1 if(($CurDepth) <= $#topic);
+                                }
+                        }
+                        elsif($topic[$CurDepth-1] eq $CurTopic || ($topic[$CurDepth] eq "" && $CurDepth ==1))
+                        {
+                                # cut the topic off the note-text
+                                if($n =~ /^($TopicSep)/)
+                                {
+                                        $CurItem[$i]->{'note'} = $dummy;
+                                }
+				else
+				{
+				        $CurItem[$i]->{'note'} = $n;
+				}
+                                # save for later output() call
+                                $CurItem[$i]->{'num'}  = $num;
+                                $CurItem[$i]->{'time'} = $t;
+                                $i++;
+                                # use this note for building the $PATH!
+                                if($RealTopic[0] eq "")
+                                {
+                                    @RealTopic = @topic;
+                                }
+                        }
+               	}
+                else
+                {
+                        output($num, $n, $t);
+                }
+        }	
+        if($TOPIC)
+        {
+                if($CurTopic ne "")
+                {
+                    undef $PATH;
+                    foreach (@RealTopic)
+                    {
+                        $PATH .= $_ . $TopicSep;
+                        last if($_ eq $CurTopic);
+                    }
+                }
+                else
+                {
+                    $PATH = $TopicSep;
+                }
+
+                # we are at top level, print a list of topics...
+                foreach $top (sort(keys %TP))
+                {
+                        output("-", " => ". $top . "$TopicSep ($TP{$top} notes)",
+                                " Sub Topic         ");
+                }
+		#print Dumper(@CurItem);
+                for($in=0;$in<$i;$in++)
+                {
+                        output( $CurItem[$in]->{'num'},
+                                $CurItem[$in]->{'note'},
+                                $CurItem[$in]->{'time'} );
+                }
+        }
 	
 	print "\n";
 }
@@ -332,6 +499,8 @@ sub list
 ############################### NEW ##################################
 sub new
 {
+    my($TEMP,$editor, $time, $note, $WARN, $c, $line, $num, $te, $me, $buff,$buffer, @topic,$n,$t,$res, @row,$sqlstatement);
+	$time = &getdate;
 	if($ALWAYS_EDIT eq "YES")
 	{
 		$TEMP = "/tmp/note.$$";
@@ -348,11 +517,18 @@ sub new
         	}
     		# read it in ($note)
     		$note = "";
-    		open E, "<$TEMP" or die "Could not open $TEMP\n";
+    		#open E, "<$TEMP" or die "Could not open $TEMP\n";
+		open E, "<$TEMP" or $WARN = 1;
+		if($WARN)
+		{
+			print "...edit process interupted! No note has been saved.\n"; 
+			undef $WARN;
+			return;
+		}
     		$c = 0;
     		while(<E>)
     		{
-    			$_ =~ s/'/\\'/g;
+    			$_ =~ s/'/`/g;
     		    	$note = $note . $_;
     		}
     		chomp $note;
@@ -363,8 +539,8 @@ sub new
 	else
 	{
 		$note = "";
-		local $line = "";
-		#local $num = 0;
+		$line = "";
+		#$num = 0;
 		# create a new note
     		print "enter the text of the note, end with .\n";
 		do
@@ -385,8 +561,19 @@ sub new
 		$number = $row[0];
 	}
 	$number++;
-	$sqlstatement = "INSERT INTO $table VALUES (0,$number,'$note','$date')";
+	if($TOPIC && $CurTopic ne "")
+        {
+                @topic = split(/$TopicSep/,$note);
+                if($topic[1] eq "")
+                {
+                        $note = $PATH . "\n$note";
+                }
+        }
 
+	# mask all occuring \'s
+	$note =~ s/\\/\\\\/g;
+
+	$sqlstatement = "INSERT INTO $table VALUES ($number,'$note','$date')";
 	$db->query($sqlstatement) 
 		    or die "ERROR: $Mysql::dberrstr\n";
 
@@ -398,27 +585,28 @@ sub new
 ############################### DELETE ##################################
 sub del
 {
+    my($i,@count, $setnum, $buff, %Merk, $num, $note, $pos, $droped, $buffer, $sqlstatement,$res, @row, $ERR);
 	# delete a note
 	&num_bereich; # get @NumBlock from $number
 	
-	foreach $N (@NumBlock)
+	foreach $_ (@NumBlock)
 	{
-		$sqlstatement = "DELETE FROM $table WHERE $fnum = $N";
+		$sqlstatement = "DELETE FROM $table WHERE $fnum = $_";
 		$res = $db->query($sqlstatement) or $ERR = $Mysql::dberrstr;
 		# do not exit if an error occurs - good for int mode!
 		if($ERR)
 		{
-			print "no note with number $N found!\n";
+			print "no note with number $_ found!\n";
 		}
 		else
 		{
-			print "note number $N has been deleted.\n";
+			print "note number $_ has been deleted.\n";
 		}
 	}
 	# recount the notenumbers:
 	$i = 0;
 	$pos = 0;
-	$sqlstatement = "SELECT id FROM $table ORDER BY id";
+	$sqlstatement = "SELECT $fnum FROM $table ORDER BY $fnum";
 	$res = $db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
 	while(@row = $res->fetchrow)
 	{
@@ -429,7 +617,7 @@ sub del
 	for($pos=0;$pos<$i;$pos++)
 	{
 		$setnum = $pos +1;
-		$sqlstatement = "UPDATE $table SET $fnum = '$setnum' WHERE id = $count[$pos]";
+		$sqlstatement = "UPDATE $table SET $fnum = '$setnum' WHERE $fnum = $count[$pos]";
 		$db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
 	}
 }
@@ -437,12 +625,15 @@ sub del
 ############################### EDIT ##################################
 sub edit
 {
+    my($keeptime, $time, $editor, $TEMP, $address, $n, $buff, $c, $note, $t, $buffer, $num, $sqlstatement, $res, @row, $match);
 	# edit a note
-	$sqlstatement = "SELECT $fnote FROM $table WHERE $fnum = $number";
+	$time = &getdate;
+	$sqlstatement = "SELECT $fnote, $fdate FROM $table WHERE $fnum = $number";
 	$res = $db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
 	while(@row = $res->fetchrow)
 	{
 		$note = $row[0];
+		$keeptime = $row[1];
 		$match = "yes";
 	}
 	if($match eq "")
@@ -472,17 +663,30 @@ sub edit
 	$c = 0;
 	while(<NOTE>)
 	{
-		$_ =~ s/'/\\'/g;
+		$_ =~ s/'/`/g;
 		$note = $note . $_;
 	}
 	chomp $note;
 	close NOTE;
 
 	system "/bin/rm -f $TEMP";
+
+	# mask all occuring \'s
+        $note =~ s/\\/\\\\/g;
+
+	if($KEEP_TIMESTAMP eq "YES")
+	{
+	    $t = $keeptime;
+	}
+	else
+	{
+	    $t = $time;
+	}
 	
 	# we got it, now save to db
 	$sqlstatement = "UPDATE $table SET "
-	. "$fnote = '$note' "
+	. "$fnote = '$note', "
+	. "$fdate = '$t' "
 	. "WHERE $fnum = $number";
 	$db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
 
@@ -492,19 +696,17 @@ sub edit
 
 sub dump
 {
+    my($buffer,$num, $note, $time,$n, $t, $res, @row);
 	# $dump_file
 	open (DUMP, ">$dump_file") or die "could not open $dump_file\n";
 	select DUMP;
 	$res = $db->query("SELECT $fnum,$fnote,$fdate FROM $table ORDER BY $fnum") 
 		or die "ERROR: $Mysql::dberrstr\n";
-	$res = $db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
-    	
-    	print "complete dump of note database from $time.\n\n";
     	
     	while(@row = $res->fetchrow)
     	{
-    		print STDOUT "dumping note number $num to $dump_file\n";
-    		print "#$num\ttime: $t\nnote:\n$n\n---------\n\n";
+		print STDOUT "dumping note number $row[0] to $dump_file\n";
+                print "Number: $row[0]\nTimestamp: $row[2]\n$row[1]\n";
     	}
 	
 	
@@ -513,46 +715,108 @@ sub dump
 	select STDOUT;
 }
 
+sub import
+{
+    my($buff, $num,$te, $me, $start, $complete, $dummi, $n, $t, $buffer, $note, $time, $date);
+	# open $dump_file and import it into the notedb
+	open (DUMP, "<$dump_file") or die "could not open $dump_file\n";
+	$complete=0;
+	$start = 0;
+	while(<DUMP>)
+	{
+		chomp $_;
+		if($_ =~ /^Number:\s\d+/)
+		{
+			if($start == 0)
+			{
+				# we have no previous record
+				($dummi,$number) = split(/\s/,$_);
+				$start = 1;
+			}
+			else
+			{
+				# we got a complete record, save it!
+				$db->query("INSERT INTO $table VALUES (0,'$note','$date')")
+					or die "ERROR: $Mysql::dberrstr\n";
+				print "note number $number from $dump_file inserted into notedb.\n";
+				$complete = 0; # restet $complete 
+				$note = "";    # reset $note
+				$date = "";    # reset $date
+				($dummi,$number) = split(/\s/,$_);
+			}	
+		}
+		elsif($_ =~ /^Timestamp:\s\d+/ && $complete == 0)
+		{
+			($dummi,$date,$time) = split(/\s/,$_);
+			$date = "$date $time";
+			$complete = 1;
+		}
+		else
+		{
+			$note .= $_ . "\n";
+		}
+	}
+	if($note ne "" && $date ne "")
+        {
+		# the last record, if existent
+                $db->query("INSERT INTO $table VALUES (0,'$note','$date')")
+                        or die "ERROR: $Mysql::dberrstr\n";
+                print "note number $number from $dump_file inserted into notedb.\n";
+        }
+}
+
 
 
 sub interactive
 {
+    my($maxlen_save, $B, $BB, $menu, $char, @LastTopic);
 	$maxlen_save = $maxlen;
 	# create menu:
-	local $B = "<blackI>";
-	local $BB = "</blackI>";
-	local $menu = 	"[ " .  $B . "L" . $BB . " List "
+	$B = "<blackI>";
+	$BB = "</blackI>";
+	$menu = 	"[" .  $B . "L" . $BB . " List "
 			. $B . "N" . $BB . " New "
 			. $B . "D" . $BB . " Delete "
 			. $B . "S" . $BB . " Search "
 			. $B . "E" . $BB . " Edit "
 			. $B . "?" . $BB . " Help "
-			. $B . "Q" . $BB . " Quit ] command> ";
+			. $B . "Q" . $BB . " Quit] "; # $CurTopic will be empty if $TOPIC is off!
 	# per default let's list all the stuff:
+	# Initially do a list command!
+	$maxlen += $timelen;
+	print "\n";
+	&list;
+	undef $SetTitle;
 	for(;;)
 	{
-		#&list;
+		$ListType = "";
 		$maxlen = $maxlen_save;
-		print "\n\n\n";
-		print C $menu;
+		if($CurDepth > 2)
+                {
+                    print C $menu . $TOPICC . "../" . $CurTopic . $_TOPICC . ">";
+                }
+                else
+                {
+                    print C $menu . $TOPICC . $CurTopic . $_TOPICC . ">";
+                }
+	
 		# endless until user press "Q" or "q"!
 		$char = <STDIN>;
 		chomp $char;
-		if($char =~ /^\d+/)
+		if($char =~ /^\d+$/)
 		{
 			# display notes
 			$maxlen += $timelen;
 			$number = $char;
 			&display;
+			undef $SetTitle;
 		}
-		elsif($char =~ /^n/i)
+		elsif($char =~ /^n$/i)
 		{
 			# create a new one
-			$time = `date +%d\".\"%m\".\"%Y\" \"%T`;
-			chomp $time;
 			&new;
 		}
-		elsif($char =~ /^l/ || $char =~ /^$/)
+		elsif($char =~ /^l$/ || $char =~ /^$/)
 		{
 			# list
 			print "\n";
@@ -561,13 +825,14 @@ sub interactive
 			&list;
 			undef $SetTitle;
 		}
-		elsif($char =~ /^L/)
+		elsif($char =~ /^L$/)
 		{
 			$ListType = "LONG";
+			print "\n";
 			&list;
 			undef $SetTitle;
 		}
-		elsif($char =~ /^h/i || $char =~ /^\?/)
+		elsif($char =~ /^h$/i || $char =~ /^\?/)
 		{
 			# zu dumm der Mensch ;-)
 			&help;
@@ -590,8 +855,6 @@ sub interactive
 		elsif($char =~ /^e\s+(\d+\-*\,*\d*)/i)
 		{
 			# edit one!
-			$time = `date +%d\".\"%m\".\"%Y\" \"%T`;
-			chomp $time;
 			$number = $1;
 			&edit;
 		}
@@ -607,7 +870,6 @@ sub interactive
 		elsif($char =~ /^s\s+/i)
 		{
 			# she want's to search
-			#$maxlen += $timelen;
 			$searchstring = $';
 			chomp $searchstring;
 			&search;
@@ -615,7 +877,6 @@ sub interactive
 		elsif($char =~ /^s$/i)
 		{
 			# we have to ask her:
-			#$maxlen += $timelen;
 			print "enter the string you want to search for: ";
 			$char = <STDIN>;
 			chomp $char;
@@ -623,16 +884,42 @@ sub interactive
 			$searchstring = $char;
 			&search;
 		}
-		elsif($char =~ /^q/i)
+		elsif($char =~ /^q$/i)
 		{
 			# schade!!!
 			print "\n\ngood bye\n";
 			exit(0);
 		}
+                elsif($char =~ /^\.\.$/ || $char =~ /^cd\s*\.\.$/)
+                {
+			$CurDepth-- if ($CurDepth > 1);
+                        $CurTopic = $LastTopic[$CurDepth];
+                        $maxlen += $timelen;
+                        print "\n";
+                        &list;
+                        undef $SetTitle;
+                }
 		else
 		{
 			# unknown
-			print "\nunknown command!\n";
+			my $unchar = $char;
+			$unchar =~ s/^cd //; # you may use cd <topic> now!
+			if(exists $TP{$char})
+                        {
+			        $char = $unchar if(exists $TP{$unchar});
+                                $LastTopic[$CurDepth] = $CurTopic;
+                                $CurTopic = $char;
+                                $maxlen += $timelen;
+                                $CurDepth++;
+                                print "\n";
+                                &list;
+                                undef $SetTitle;
+                        }
+                        else
+                        {
+                                print "\nunknown command!\n";
+                        }
+			undef $unchar;
 		}
 	}
 }
@@ -641,17 +928,23 @@ sub interactive
 
 sub usage
 {
-print qq~
-usage: 		note [-i | --interactive] | [ options ] [ number [,number...]]
+print qq~This is the program note $version by Thomas Linden (c) 1999-2000.
+It comes with absolutely NO WARRANTY. It is distributed under the
+terms of the GNU General Public License. Use it at your own risk :-)
+Usage: 		note [-i | --interactive] | [ options ] [ number [,number...]]
 Options:
 	-h	--help			displays this help screen
 	-v	--version		displays the version number
-	-l	--list			lists all existing notes
-	-L	--longlist		the same as -l but prints also the timestamp
+	-l	--list [<topic>]	lists all existing notes If no topic were specified,
+					it will display a list of all existing topics.
+	-L	--longlist [<topic>]	the same as -l but prints also the timestamp
 	-s	--search <string>	searches for <string> trough the notes database
 	-e	--edit <number>		edit note with <number>
 	-d	--delete <number>	delete note with <number>
-	-D	--Dump <file>		dumps the notes to the textfile <file>
+	-D	--Dump [<file>]		dumps the notes to the textfile <file>
+	-I	--Import <file>		imports a previously dumped textfile into the
+					note-database. Dumps from the mysql and the binary
+					version are in the same format.
 	-i	--interactive		interactive mode
 
  o if you specify only a number (i.e. "note 4"), then the note with that
@@ -664,18 +957,17 @@ Options:
    informations about the configuration.
  o In interactive mode you can get help at any time by typing "?" or "h" at
    the prompt.
-
-This is the program note $version by Thomas Linden (c) 1999-2000.       GPL.
-
 ~;
   exit 1;
 }
 sub find_editor {
-   return $ENV{"VISUAL"} || $ENV{"EDITOR"} || "vim" || "vi" || "pico";
+   return $PreferredEditor || $ENV{"VISUAL"} || $ENV{"EDITOR"} || "vim" || "vi" || "pico";
 }
-
+#/
 sub output
 {
+	my($SSS, $LINE, $num, $note, $time, $TYPE, $L, $LONGSPC, $R, $PathLen, $SP, $title, $CUTSPACE,
+	       $len, $diff, $Space);
 	# 0 = Num, 1 = Note, 2 = Time
 	if($ListType ne "LONG")
 	{
@@ -685,27 +977,28 @@ sub output
 	{
 		$SSS = "-" x ($maxlen + 31);
 	}
-	local $LINE = "$BORDERC $SSS $_BORDERC\n";
-	local $num   = $_[0];
-	local $note  = $_[1];
-	local $time  = $_[2];
-	local $TYPE  = $_[3];
-	local $L = $BORDERC . "[" . $_BORDERC;
-	local $LONGSPC = " " x (22 + 3);
-        local $R = $BORDERC . "]" . $_BORDERC;
+	$LINE = "$BORDERC $SSS $_BORDERC\n";
+	$num   = $_[0];
+	$note  = $_[1];
+	$time  = $_[2];
+	$TYPE  = $_[3];
+	$L = $BORDERC . "[" . $_BORDERC;
+	$LONGSPC = " " x (22 + 3);
+        $R = $BORDERC . "]" . $_BORDERC;
+	$PathLen = length($PATH); # will be ZERO, if not in TOPIC mode!
 	if($TYPE ne "SINGLE")
 	{
 		if(!$SetTitle) 
 		{
-			local $SP = "";
+			$SP = "";
 			# print only if it is the first line!
 			if($ListType ne "LONG")
 			{
-				$SP = " " x ($maxlen-2 - $timelen);
+				$SP = " " x ($maxlen-2 - $timelen - $PathLen);
                 	}
 			else
 			{
-				$SP = " " x ($maxlen-2);
+				$SP = " " x ($maxlen-2 - $PathLen);
 			}
 			print C $LINE;
 		
@@ -718,21 +1011,35 @@ sub output
 			{
 				print $LONGSPC;
 			}
-			print C $NOTEC . "note$_NOTEC$SP$R\n";
-
+                        if($TOPIC)
+                        {
+                            print C $TOPICC . "$PATH    $_TOPICC$SP$R\n";
+                        }
+                        else
+                        {
+                            print C $NOTEC . "note$_NOTEC$SP$R\n";
+                        }
 
                 	print C $LINE;
 			$SetTitle = 1;
 		}
-		local $title = "";
+		$title = "";
 		$CUTSPACE = " " x $maxlen;
 		$note =~ s/\n/$CUTSPACE/g;
-        	local $len   = length($note);
+        	$len   = length($note);
         	if($len < $maxlen-3)
         	{
-        	    local $diff = $maxlen - $len;
-		    local $Space = " " x $diff;	
-        	    $title = $BORDERC . $NOTEC . "\"" . $note . "\"" . $_NOTEC . $Space . "$_BORDERC";
+        	    $diff = $maxlen - $len;
+		    $Space = " " x $diff;	
+                    if($num eq "-")
+                    {
+                        $title = $BORDERC . $TOPICC . "\"" . $note . "\"" . $_TOPICC . $Space . "$_BORDERC";
+                    }
+                    else
+                    {
+                        $title = $BORDERC . $NOTEC . "\"" . $note . "\"" . $_NOTEC . $Space . "$_BORDERC";
+                    }
+
         	}
 		else
         	{
@@ -753,8 +1060,8 @@ sub output
 	else
 	{
 		chomp $note;
-		local $Space = " " x ($maxlen - 16);
-		local $SP = " " x ($maxlen + 13);
+		$Space = " " x ($maxlen - 16);
+		$SP = " " x ($maxlen + 13);
 		#print C $LINE;
 		#print C "$L $NUMC#$_NUMC   " . $TIMEC . "creation date$_TIMEC$SP$R\n";
 		print C $LINE;
@@ -770,8 +1077,9 @@ sub output
 
 sub C
 {
+    my(%Color, $default, $S, $Col, $NC, $T);
         # \033[1m%30s\033[0m    
-        local %Color = (        'black'         => '0;30',
+        %Color = (        'black'         => '0;30',
                                 'red'           => '0;31',
                                 'green'         => '0;32',
                                 'yellow'        => '0;33',
@@ -830,22 +1138,25 @@ sub C
 
 sub uen
 {
-	local $T = pack("u", $_[0]);
+    my($T);
+	$T = pack("u", $_[0]);
 	chomp $T;
 	return $T;
 }
 
 sub ude
 {
-        local $T = unpack("u", $_[0]);
+    my($T);
+        $T = unpack("u", $_[0]);
         return $T;
 }
 
 sub num_bereich
 {
+    my($m,@LR,@Sorted_LR,$i);
 	# $number is the one we want to delete!
     # But does it contain kommas?
-	local $m = 0;
+	$m = 0;
     if($number =~ /\,/)
     {
         # accept -d 3,4,7
@@ -854,8 +1165,23 @@ sub num_bereich
     elsif($number =~ /^\d+\-\d+$/)
     {
         # accept -d 3-9
-        local @LR = split(/\-/,$number);
-        local @Sorted_LR = sort @LR;
+        @LR = split(/\-/,$number);
+        @Sorted_LR = ();
+
+	if($LR[0] > $LR[1])
+	{
+		@Sorted_LR = ($LR[1], $LR[0]);
+	}
+	elsif($LR[0] == $LR[1])
+	{	
+		# 0 and 1 are the same
+		@Sorted_LR = ($LR[0], $LR[1]);
+	}
+	else
+	{
+		@Sorted_LR = ($LR[0], $LR[1]);
+	}
+
         for($i=$Sorted_LR[0]; $i<=$Sorted_LR[1]; $i++)
         {
             # from 3-6 create @NumBlock (3,4,5,6)
@@ -870,6 +1196,19 @@ sub num_bereich
 
 }
 
+sub getdate
+{
+    my($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+    $year += 1900;
+    $mon += 1;
+    $mon =~ s/^(\d)$/0$1/;
+    $hour =~ s/^(\d)$/0$1/;
+    $min =~ s/^(\d)$/0$1/;
+    $sec =~ s/^(\d)$/0$1/;
+    $mday =~ s/^(\d)$/0$1/;
+    return "$mday.$mon.$year $hour:$min:$sec";
+}
+
 
 sub help
 {
@@ -878,24 +1217,30 @@ print qq~
 HELP for interactive note       $version
 
 The following commands are available:
-L/l	List notes. L=long, with timestamp and l=short without
-	timestamp. You can also just hit <enter> for short list.
-N	Create a new note.
-D	Delete a note. You can either hit "d 1" or "d 1-4"
-	or just hit "d". If you don't specify a number, you
-	will be asked for.
-S	Search trough the notes database. Usage is similar to
-	Delete, use a string instead of a number to search for.
-E	Edit a note. Usage is similar to Delete but you can 
-	only edit one note a time.
-?/H	This help screen.
-Q	Exit the program.
+L/l     List notes. L=long, with timestamp and l=short without timestamp.
+        You can also just hit <enter> for short list.
+N       Create a new note.
+D       Delete a note. You can either hit "d 1" or "d 1-4" or just hit "d".
+        If you don't specify a number, you will be asked for.
+S       Search trough the notes database. Usage is similar to Delete, use
+        a string instead of a number to search for.
+E       Edit a note. Usage is similar to Delete but you can only edit note
+        a time.~;
+if($TOPIC)
+{
+print qq~
+T       print a list of all existing topics. You can change the actual
+        topic by simply typing it's name. You can create a new topic by
+        creating a new note, the first line must be the topic borderd by
+        backslashes, i.e.: "\\newtopic\\". If you type just ".." instead
+        of a topic, you will go to the "default" topic, which contains
+        all notes without a topic.~;
+}
+print qq~
+?/H     This help screen.
+Q       Exit the program.
 
 All commands except the List command are case insensitive.
 ---------------------------------------------------------------
 ~;
 }
-
-
-
-

@@ -1,4 +1,4 @@
-# 0.6
+# 0.7
 # This is a sample config for the note script
 # You do not need it, if you keep the values
 # here unchanged.
@@ -41,13 +41,25 @@
 #$ALWAYS_EDIT = "YES";
 
 
+# uncomment this, if you dont prefer that note updates
+# the timestamp of a note after editing it. It will
+# keep the original timestamp if this option is set.
+#$KEEP_TIMESTAMP = "YES";
+
+
 # uncomment and edit it, if you want to use another
 # editor than the default $EDITOR or as fallback vi.
 #$PreferredEditor = "emacs";
 
+
 # This option turns topic-support on or off
 # comment it out, if you don't need it
 $TOPIC = 1;
+
+
+# You can specify your own topic separator here.
+# the default topic separator is a normal slash: "/"
+#$TopicSep = '/';
 
 
 # Define the maximum bytes a note can have in a
