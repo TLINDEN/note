@@ -72,7 +72,7 @@ my (
     $ALWAYS_INT, $KEEP_TIMESTAMP, $COLOR, $ALWAYS_EDIT, $HOME, $FormatText,
     $BORDER_COLOR, $NOTE_COLOR, $NUM_COLOR, $TOPIC_COLOR, $MAX_NOTE,
     $USE_CRYPT, $CRYPT_METHOD, $TopicSep, $DEFAULT_LIST, $TIME_COLOR, $SHORT_CD,
-    $USE_CACHE,
+    $USE_CACHE, $AUTO_CLEAR,
 
     #
     # db specifics from .noterc
@@ -126,7 +126,7 @@ $TIME_COLOR   	= "blue";
 $TOPIC_COLOR 	= "bold";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.2.1";
+$version 	= "1.2.2";
 if ($TOPIC) {
   $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 }
@@ -138,6 +138,8 @@ $fnote          = "note";
 $fdate          = "date";
 $fnum           = "number";
 $ALWAYS_INT     = "YES";
+$ALWAYS_EDIT    = "YES";
+$AUTO_CLEAR     = "YES";
 
 # colors available
 # \033[1m%30s\033[0m
@@ -914,15 +916,15 @@ sub determine_width {
     eval {
       my $wide = `stty -a`;
       if ($wide =~ /columns (\d+?);/) {
-	$maxlen = $1 - 33; # (33 = timestamp + borders)
+	$maxlen = $1 - 32; # (32 = timestamp + borders)
       }
       elsif ($wide =~ /; (\d+?) columns;/) {
 	# bsd
-        $maxlen = $1 - 33; # (33 = timestamp + borders)
+        $maxlen = $1 - 32; # (32 = timestamp + borders)
       }
       else {
 	# stty didn't work
-	$maxlen = 80 - 33;
+	$maxlen = 80 - 32;
       }
     };
   }
@@ -930,6 +932,7 @@ sub determine_width {
 
 sub clear {
   # first, try to determine the terminal height
+  return if(!$AUTO_CLEAR);
   my $hoch;
   eval {
     my $height = `stty -a`;
@@ -1197,39 +1200,41 @@ sub format {
 
 sub output {
     my($SSS, $LINE, $num, $note, $time, $TYPE, $L, $LONGSPC, $R, $PathLen, $SP, $title, $CUTSPACE,
-       $len, $diff, $Space, $nlen, $txtlen, $count);
+       $VersionLen, $len, $diff, $Space, $nlen, $txtlen, $count);
     ($num, $note, $time, $TYPE, $count) = @_;
 
     $txtlen = ($ListType eq "LONG") ? $maxlen : $timelen + $maxlen;
     $note = &format($note);
 
-    $SSS = "-" x ($maxlen + 31);
+    $SSS = "-" x ($maxlen + 30);
     $nlen = length("$num");
     $LINE = "$BORDERC $SSS $_BORDERC\n";
     $L = $BORDERC . "[" . $_BORDERC;
-    $LONGSPC = " " x (26 - $nlen);
+    $LONGSPC = " " x (25 - $nlen);
     $R = $BORDERC . "]" . $_BORDERC;
     $PathLen = length($PATH);	# will be ZERO, if not in TOPIC mode!
+    $VersionLen = length($version) + 7;
+
     if ($TYPE ne "SINGLE") {
       if (!$SetTitle) {
 	$SP = "";
 	# print only if it is the first line!
-	$SP = " " x ($maxlen - 2 - $PathLen);
+	$SP = " " x ($maxlen - 2 - $PathLen - $VersionLen);
 	if (!$Raw) {
 	  # no title in raw-mode!
 	  print C $LINE;
 	  print C "$L $NUMC#$_NUMC  ";
 	  if ($ListType eq "LONG") {
-	    print C " $TIMEC" . "creation date$_TIMEC           ";
+	    print C " $TIMEC" . "creation date$_TIMEC          ";
 	  }
 	  else {
 	    print $LONGSPC;
 	  }
 	  if ($TOPIC) {
-	    print C $TOPICC . "$PATH    $_TOPICC$SP$R\n";
+	    print C $TOPICC . "$PATH    $_TOPICC$SP" . " note $version $R\n";
 	  }
 	  else {
-	    print C $NOTEC . "note$_NOTEC$SP$R\n";
+	    print C $NOTEC . "note$_NOTEC$SP" . " note $version $R\n";
 	  }
 	  print C $LINE;
 	}
@@ -1244,13 +1249,14 @@ sub output {
       $len   = length($note);
       if ($len < ($txtlen - 2 - $nlen)) {
 	$diff = $txtlen - $len;
-	$Space = " " x $diff;
 	if (!$Raw) {
 	  if ($num eq "-") {
-	    $title = $BORDERC . $TOPICC . "\"" . $note . "\"" . $_TOPICC . $Space . "$_BORDERC";
+	    $Space = " " x $diff;
+	    $title = $BORDERC . $TOPICC . $note . " " . $_TOPICC . $Space . "$_BORDERC";
 	  }
 	  else {
-	    $title = $BORDERC . $NOTEC . "\"" . $note . "\"" . $_NOTEC . $Space . "$_BORDERC";
+	    $Space = " " x ($diff - ($nlen - 1));
+	    $title = $BORDERC . $NOTEC  . $note . " " . $_NOTEC . $Space . "$_BORDERC";
 	  }
 	}
 	else {
@@ -1260,7 +1266,7 @@ sub output {
       else {
 	$title = substr($note,0,($txtlen - 2 - $nlen));
 	if (!$Raw) {
-	  $title = $BORDERC . $NOTEC . "\"" . $title . "...\"$_NOTEC$_BORDERC";
+	  $title = $BORDERC . $NOTEC . $title . "... $_NOTEC$_BORDERC";
 	}
       }
       if ($Raw) {
@@ -1284,7 +1290,7 @@ sub output {
     else {
       # we will not reach this in raw-mode, therefore no decision here!
       chomp $note;
-      $Space = " " x (($maxlen + $timelen) - 16);
+      $Space = " " x (($maxlen + $timelen) - $nlen - 16);
       print C $LINE;
       print C "$L $NUMC$num$_NUMC $R$L$TIMEC$time$_TIMEC $Space$R\n";
       print "\n";
@@ -1546,6 +1552,7 @@ sub getconfig
       $ALWAYS_EDIT 	= undef  if (/^AlwaysEditor/ && $value == 0);
       $KEEP_TIMESTAMP   = "YES"  if (/^KeepTimeStamp/ && $value == 1);
       $KEEP_TIMESTAMP   = undef  if (/^KeepTimeStamp/ && $value == 0);
+      $AUTO_CLEAR       = "YES"  if (/^AutoClear/ && $value == 1);
       $COLOR            = "YES"  if (/^UseColors/ && $value == 1);
       $COLOR    	= "NO"   if (/^UseColors/ && $value == 0);
       $TopicSep 	= $value if (/^TopicSeparator/);
@@ -1560,6 +1567,7 @@ sub getconfig
       $TempDir          = $value if (/^TempDirectory/);
       $USE_CACHE        = $value if (/^Cache/);
       $time_format      = $value if (/^TimeFormat/);
+      $AUTO_CLEAR       = $value if (/^AutoClear/);
     }
     chomp $home;
     $home =~ s/\/*$//;		# cut eventually / at the end

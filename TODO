@@ -1,3 +1,7 @@
-o mysql.pm und dbm.pm generate_search testen!
-o Website anpassen
-o Announcement on freshmeat.
+- &output() has to be rewritten, its a historically
+  growed mutant.
+
+- ncurses support
+
+- readline/editline support for interactive prompt
+  with: completion and history

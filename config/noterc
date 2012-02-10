@@ -1,10 +1,10 @@
-# 1.1.2        -*- sh -*- 
+# 1.2.2        -*- sh -*- 
 # This is a sample config for the note script
 # There are useful defaults set in note itself.
 # 
 # Copy it to your $HOME as .noterc
 #
-# note is Copyright (c) 1999-2000 Thomas Linden. 
+# note is Copyright (c) 1999-2003 Thomas Linden. 
 # You can contact me per email: <tom@daemon.de>
 #
 # comments start with #, empty lines will be ignored.
@@ -119,6 +119,11 @@ TopicSeparator		/
 # available size.
 MaxLen			auto
 
+
+# Set this to 0 if you dont want note to automatically
+# clear the screen after displaying something and after
+# exit (feature introduced in 1.2.1).
+AutoClear               1
 
 # note can use colors for output, set this option to
 # 1, if you don't want it, or if your terminal does

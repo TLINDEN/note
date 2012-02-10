@@ -1,4 +1,19 @@
 ================================================================================
+1.2.2:
+FIXED:		oneliner note entries caused breaked displaying in interactive
+		mode.
+FIXED:		list displaying in interactiv mode corrected. the width of the
+		note number will now correctly used.
+CHANGED:	the default setting of note will now be to use an external
+		editor instead of stdin.
+CHANGED:	the unneccessary apostrophes in listings has been removed.
+ADDED:		the note version will be displayed in the titlebar of interactive
+		mode.
+ADDED:		new config variable AutoClear, which is turned on by default,
+		which controls wether the screen shall be cleared after each
+		item (display, list and so on).
+
+================================================================================
 1.2.1:
 CHANGED:	added the correct installation instructions to the README file.
 REMOVED: 	removed the usage guidelines from te README file. This information
