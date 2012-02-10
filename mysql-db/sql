@@ -4,3 +4,5 @@ CREATE TABLE note (
   date text,
   PRIMARY KEY (number)
 );
+# sample grant statement:
+#GRANT ALL PRIVILEGES ON tom_note TO tom@localhost IDENTIFIED BY 'password';

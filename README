@@ -1,4 +1,4 @@
-note 0.5 by Thomas Linden, 23/01/2000
+note 0.6 by Thomas Linden, 21/02/2000
 
 
 Introduction
@@ -89,11 +89,11 @@ Usage
 	If you want to get an overview of all notes, type "note -l".
 	You will get a list of all notes, containing the number,
 	the first line and the creation date. If topic-support is
-	turned on (which is by default), then "-l" will display a list
-	of all existing topics. If you want to get a listing of all
-	notes under a certain topic, use "-l topicname". You will get
-	timestamps, if you use "-L" instead of "-l". Read more about
-	topics below in the section "Topics".
+	turned on (which is by default), then all subtopics under the 
+	current topic will be displayed first.
+	If you want to get a listing of all
+	If you want to see the timestamps, use "-L" instead of "-l". 
+	Read more about topics below in the section "Topics".
 
 	To edit a certain note, type "note -e 1". It will invoke your
 	editor (vi or pico). You can edit it, after saving, note
@@ -137,30 +137,62 @@ Topics
 	notes are sorted under various topics. There is no special database
 	field for the topic. Instead the topic will be stored right in the
 	note.
-	If the first line of your note contains some text bordered by back-
-	slashes, then note will consider it as the topic of this certain
-	note. For examle:
-	\TodoList\
+	If the first line of your note contains some text bordered by slashes
+	(or whatever you prefer, set $TopicSep in your config! default is slash), 
+	then note will consider it as the topic of this certain note. For examle:
+	/TodoList/
 	
 	If you are in interactive mode, you can "cd" to a different note simply
 	by typing it's name at the command-prompt. The list-command will only
 	show you notes under this topic. If you create a new note, it will auto-
 	magically inserted under the current topic (note will prepend  the string
-	"\topicname\" to the text of your note).
+	"/topicname/" to the text of your note).
 	
-	You can create at any time form any point a new topic. Just create a new
-	note and type yourself the name of the new topic bordered by backslashes
+	You can create at any time from any point a new topic. Just create a new
+	note and type the name of the new topic bordered by slashes (or $TopicSep)
 	at the first line of this note. After saving, there will be available a
 	new topic with one note in it.
+
+	You can create as many subtopics as you like, the format is similar to a 
+	filesystem-path. An example, say, you want to create such a structure:
 	
-	If a note does not contain the "magic" \topic\ construction on the first
-	line, it will be listed under the topic "default". Therefore never use the
-	word "default" as a topic-name :-)
+	(root - top level)
+	|
+	|----test
+	|      |----subtopic
+	|      |       |--note 1
+	|      |       |--note 2
+	|      |
+	|      |--note 4  
+	|
+	|--note 3
+	
+	Then you may create those 4 new notes:
+	--- snip ---
+	/test/subtopic/
+	note 1
+	--- snip ---
+	/test/subtopic/
+	note 2
+	--- snip ---
+	note 3
+	--- snip ---
+	/test/
+	note 4
+	--- snip ---		 
+	
+	I hope, you got the point ;-)
+	   
+	
+	
+	If a note does not contain the "magic" /topic/ construction on the first
+	line, it will be listed under the "root" of note, that is the point you are 
+	at the startup of note.
 
 	You can subsequently move a note without a topic to a certain topic. Simply
 	edit it and insert at the first line the above mentioned construction.
 
-	Note: 	Please don't forget the prepending and appending backslash of a topic. 
+	Note: 	Please don't forget the prepending and appending a slash of a topic. 
 		You will get strange results without it!
 
 
@@ -303,4 +335,4 @@ Author
 Last changed
 ============
 
-	23.01.2000	
+	21.02.2000	
