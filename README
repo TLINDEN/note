@@ -1,4 +1,4 @@
-note 0.4 by Thomas Linden, 13/01/2000
+note 0.4.1 by Thomas Linden, 18/01/2000
 
 
 Introduction
@@ -39,6 +39,7 @@ Requirements
 		o The module IO::Seekable, which should be 
 		  already installed with your perl distributuion.
 		o Mysql.pm if you want to use the mysql version.
+
 
 
 Installation
@@ -104,11 +105,23 @@ Usage
 	an occurence of this string and tell you the number and first-
 	line it have.
 
+	Instead of using note from the commandline you can use the
+	interactive mode. Run note with "note -i". If you need assistance
+	type "?" or "h" at the "command>" prompt. The interactive mode
+	provides you the most functions of note.
+
+	You can also dump the contents of your note-database into a 
+	ASCII-textfile. You can use this file later to import it into
+	your note-database. This is usefull, if you want quickly trans-
+	fer your notes from one host to another (i.e. you could mail
+	your note-dump form your office to home and import it there
+	for further use).
+	The dumps from the two versions of note are in the same format.
 
 
 
 Format of the notedb (binary version)
-====================
+=====================================
 
 	The database where the notes are stored is a binary file of
 	the following format:
@@ -124,6 +137,45 @@ Format of the notedb (binary version)
 	it will be filled with ZERO's ("\0"). The Note and the Time
 	fields will be uuencoded before storage. Of course, this is
 	no security, never mind...
+
+
+
+The note-database (mysql version)
+=================================
+	
+	The sql-database for the mysql version has the following design:
+	+--------+---------+------+-----+---------+----------------+
+	| Field  | Type    | Null | Key | Default | Extra          |
+	+--------+---------+------+-----+---------+----------------+
+	| number | int(10) |      | PRI | 0       | auto_increment |
+	| note   | text    | YES  |     | NULL    |                |
+	| date   | text    | YES  |     | NULL    |                |
+	+--------+---------+------+-----+---------+----------------+
+
+
+
+Format of the ASCII-dump file (note -D)
+=======================================
+
+	The dump of a note-database (if you use note -D) has the following
+	format:
+	
+	--- snip ---
+	Number: 1
+	Timestamp: 14.01.2000 00:25:01
+	This is a sample text
+	in a sample note.
+
+	Number: 2
+	Timestamp: 14.01.2000 02:37:40
+	And this is another sample
+	of a note.
+	--- snip ---
+	
+	You can reimport a dump into your note-database with "note -I <file>"
+	Existing notes will not overwritten, note will append the imported
+	data to your note-database.
+
 
 
 
@@ -181,15 +233,17 @@ Comments
 ========
 
 	You can send any comments to Thomas Linden <tom@daemon.de>.
-
+	If you find a bug or if you have a suggestion for improvement of the script
+	feel free to send me a patch ;-)
 
 
 
 License
 =======
 
-	This program is GPL. 
-
+	This script comes with absolutely NO WARRANTY. It is distributed under the
+	terms of the GNU General Public License. Use it at your own risk :-)
+	You can read the complete GPL at: http://www.gnu.org/copyleft/gpl.html
 
 
 
@@ -204,4 +258,4 @@ Author
 Last changed
 ============
 
-	13.01.2000	
+	18.01.2000	

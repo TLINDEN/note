@@ -1,7 +1,6 @@
 CREATE TABLE note (
-  id int(10) DEFAULT '0' NOT NULL auto_increment,
-  number int(10),
+  number int(10) DEFAULT '0' NOT NULL auto_increment,
   note text,
   date text,
-  PRIMARY KEY (id)
+  PRIMARY KEY (number)
 );

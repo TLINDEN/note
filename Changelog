@@ -1,3 +1,17 @@
+0.4.1:
+ADDED:		The install.sh script for the mysql version is no able to install the
+		required Mysql module directly from CPAN, thanks to David A. Bandel!
+FIXED:		The mysql version did not display notes (i.e.: "note 3" did nothing)
+CHANGED:	Again, the sql-format of the mysql database has been changed. Now
+		there are only 3 fields, the number filed is the primary key, the id
+		field in previous versions was a waste of diskspace...
+CHANGED:	The format of the dump-output has been changed.
+ADDED:		It is now possible to import previously dumped notes into the notedb
+		(dumps from both versions are compatible with each other)
+FIXED:		the function num_bereich() had a bug, which caused ot to ignore under
+		some circumstances one number (i.e. "note -d 4-13" did nothing).
+
+
 0.4:
 CHANGED:	ok, mysql support is back again (upon requests). therefore there
 		are two different version of the script in the same time with
@@ -19,14 +33,12 @@ CHANGED:	it uses no more a mysql database, but a binary file instead.
 ADDED:		note can display the notes with colors, it is turned off by default
 
 
-
 0.2:
 FIXED:		now any occurence of ' will be masked with \' before storage
 		to the mysql database.
 FIXED:		now numbers of notes will be recounted, if one delete one note,
 		so the list of notes will everytime start with 1,2,3,...
 CHANGED:	the look of the list output has been changed, similar to a table
-
 
 
 0.1:

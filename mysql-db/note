@@ -1,37 +1,53 @@
 #!/usr/bin/perl
-#
-# this is the small console program "note" (BINARY version)
+# this is the small console program "note" (MYSQL version)
 # It works similar to some well known GUI note programs,
 # but instead of using X11 it uses the UN*X console.
 # You can edit existing notes, delete them, create new
 # ones and, of course display them.
-# The notes will be stored in a binary data file (~/.notedb)
-#
-# Previous versions needed a mysql database. This is no more
-# the case.
-# If there exists a configfile called ~/.noterc then it will
-# be processed. You can overwrite some default values of note.
+# The notes will be stored in a mysql database. Refer to
+# the README of the desitribution for details about 
+# installation.
+# It requires a configfile named .noterc in the users home.
+# If it does not exist, note will create one for you, which
+# you will have to edit.
 #
 # If you find it usefull or find a bug, please let me know:
 # Thomas Linden <tom@daemon.de>
+#
+# note is GPL software.
 
+use Mysql;
 
-#################################################
+##################################
 # define some default values.
-# You can change them, but be carefull!
-# Instead you can define each of them in a configfile
-# called ~/.noterc.
-$MAX_NOTE = 1024;
-$MAX_TIME = 64;
+# don't change them, instead use the config file!
 
 $maxlen = 20;
 $timelen = 22;
+
+$date = `date +%e\".\"%m\".\"%Y\" \"%T`;
+chomp $date;
+
+$USER = getlogin || getpwuid($<);
+chomp $USER;
+
 $HOME = `echo \$HOME`;
 chomp $HOME;
 
 $CONF = $HOME . "/.noterc";
 
-$NOTEDB = $HOME . "/.notedb";
+$DEFAULTDBNAME = $USER . "_note";
+
+# database settings, override them within the config!
+$dbname = "$DEFAULTDBNAME";
+$dbhost = "localhost";
+$dbuser = $USER;
+$dbpasswd = "";
+$table  = "note";
+$fnum   = "number";
+$fnote  = "note";
+$fdate  = "date";
+
 
 $COLOR = "NO";
 # if $COLOR equals NO, then the following color-definitions
@@ -40,7 +56,7 @@ $BORDER_COLOR = "BLACK";
 $NUM_COLOR    = "blue";
 $NOTE_COLOR   = "magenta";
 $TIME_COLOR   = "black";
-#################################################
+###################################
 
 
 sub usage;
@@ -59,10 +75,7 @@ sub list;
 sub help;
 sub import;
 
-use IO::Seekable;
-
-$version = "0.4.1 (binary database)";
-
+$version = "0.4.1 (mysql database)";
 
 # process command line args
 if($ARGV[0] eq "")
@@ -137,26 +150,26 @@ else
         }
 	elsif($ARGV[0] eq "-D" || $ARGV[0] eq "--Dump" || $ARGV[0] eq "--dump")
 	{
-			$mode = "dump";
-			$dump_file = $ARGV[1];
-			$ARGV[0] = "";
-			if($dump_file eq "")
-                        {
-                               $dump_file = "note.dump.$$";
-                               print "not dumpfile specified, using $dump_file.\n";
-                        }
+		$mode = "dump";
+		$dump_file = $ARGV[1];
+		$ARGV[0] = "";
+		if($dump_file eq "")
+		{
+			$dump_file = "note.dump.$$";
+			print "not dumpfile specified, using $dump_file.\n";
+		}
 	}
 	elsif($ARGV[0] eq "-I" || $ARGV[0] eq "--Import" || $ARGV[0] eq "--import")
-	{
-		$mode = "import";
-		$dump_file = $ARGV[1];
+        {
+                $mode = "import";
+                $dump_file = $ARGV[1];
                 $ARGV[0] = "";
                 if($dump_file eq "")
                 {
                         print "No dumpfile specified.\n";
-			exit(1);
+                        exit(1);
                 }
-	}
+        }
         elsif($ARGV[0] eq "-v" || $ARGV[0] eq "--version")
         {
                 print "This is note $version from Thomas Linden <tom\@daemon.de>.\n";
@@ -175,31 +188,20 @@ else
   }
 }
 
-###################### CONFIG ~/.noterc exists? #########################
-# If not, use the predefined Values!
+# open the configfile.
+
+
+
 if(-e $CONF)
 {
-        eval `cat $CONF`;
+	eval `cat $CONF`;
 }
+
 
 # Always interactive?
 if($ALWAYS_INT eq "YES")
 {
 	$mode = "interactive";
-}
-
-
-###################### db exists? #######################################
-# if not, create it!
-if(! -e $NOTEDB)
-{
-	open(TT,">$NOTEDB") or die "Could not create $NOTEDB: $!\n";
-	close (TT);
-}
-elsif(! -w $NOTEDB)
-{
-	print "$NOTEDB is not writable!\n";
-	exit(1);
 }
 
 
@@ -225,6 +227,10 @@ if($ListType ne "LONG")
      $maxlen += $timelen; # no time will be displayed!
 }
 
+
+# ok, if still here, we got it all, now let's connect to the database
+$db = Mysql->connect($dbhost,$dbname,$dbuser,$dbpasswd)
+	or die "ERROR: $Mysql::dberrstr\n";
 
 
 # main loop: ###############
@@ -278,82 +284,70 @@ exit(0);
 ############################### DISPLAY ##################################
 sub display
 {
+	# display a certain note
 	print "\n";
-	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
 	&num_bereich; # get @NumBlock from $numer
 	foreach $N (@NumBlock)
 	{
-		$address = ($N -1 ) * $sizeof;
-		seek(NOTE, $address, SEEK_SET);
-		read(NOTE, $buffer, $sizeof);
-		($num, $note, $time) = unpack($typedef, $buffer);
-		$n = ude($note);
-		$t = ude($time);	
-		if($num)
+		$res = $db->query("SELECT $fnote,$fdate FROM $table WHERE $fnum = $N")
+			or die "ERROR: $Mysql::dberrstr\n";
+		while(@row = $res->fetchrow)
 		{
-			output($num, $n, $t, "SINGLE");
-			print "\n";
+			output($N, $row[0], $row[1], "SINGLE");
+			print "\n";		
 			$match = 1;
 		}
 	}
-	close(NOTE);
 	if(!$match)
 	{
 		print "no note with that number found!\n";
 	}
 }
-
-
 ############################### SEARCH ##################################
 sub search
 {
 	$maxlen += $timelen;
 	if($searchstring eq "")
-        {
-                &usage;
-                exit(1);
-        }
-	print "searching the database $NOTEDB for \"$searchstring\"...\n";
-	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
-        seek(NOTE, 0, 0); # START FROM BEGINNING
-        while(read(NOTE, $buffer, $sizeof))
-        {
-                ($num, $note, $time) = unpack($typedef, $buffer);
-                $n = ude($note);
-                $t = ude($time);
-		if($n =~ /$searchstring/i)
-                {
-			output($num, $n, $t);
-			$match = 1;
-		}
-        }
-	if(!$match)
 	{
-		print "no matching note found!\n";
+		&usage;
+		exit(1);
 	}
-        close(NOTE);
-        print "\n";
+	print "searching the database $dbname for \"$searchstring\"...\n\n";
+	
+	$sqlstatement = "SELECT DISTINCT $fnum,$fnote,$fdate FROM $table WHERE "
+	. "$fnote LIKE '%$searchstring%'"
+	. " ORDER BY $fnum";
+
+	$res = $db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
+    	while(@row = $res->fetchrow)
+    	{
+    		output($row[0], $row[1], $row[2]);
+    		$match = 1;
+    	}
+	
+	
+	if(!$match)
+    	{
+     	   print "no matching note found!\n";
+     	}	
+	print "\n";
 }
 
 
 ############################### LIST ##################################
 sub list
 {
-	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
-        seek(NOTE, 0, 0); # START FROM BEGINNING
-	#print "listing all existing notes:\n\n";
-        while(read(NOTE, $buffer, $sizeof))
-        {
-                ($num, $note, $time) = unpack($typedef, $buffer);
-                $n = ude($note);
-                $t = ude($time);
-                #print "#$num:\t$t\n---\n$n\n\n";
-		output($num, $n, $t);
-        }
-        close(NOTE);
+	# list all available notes (number and firstline)
+	$res = $db->query("SELECT $fnum,$fnote,$fdate FROM $table ORDER BY $fnum") 
+		or die "ERROR: $Mysql::dberrstr\n";
+    	while(@row = $res->fetchrow)
+    	{
+    		output($row[0], $row[1], $row[2]);
+    	}
+	
+	
 	print "\n";
 }
-
 
 ############################### NEW ##################################
 sub new
@@ -378,7 +372,8 @@ sub new
     		$c = 0;
     		while(<E>)
     		{
-    		    $note = $note . $_;
+    			$_ =~ s/'/\\'/g;
+    		    	$note = $note . $_;
     		}
     		chomp $note;
     		close E;
@@ -395,149 +390,122 @@ sub new
 		do
     		{
     		      $line = <STDIN>;
+    		      $_ =~ s/'/\\'/g;
     		      $note = $note . $line;
     		} until $line eq ".\n";
 		# remove the . !
     		chop $note;
     		chop $note;
 	}
-	open (N, "<$NOTEDB") or die "could not open .notedb\n";
-	# since we have not number, look for the next available:
-	seek(N, 0, 0); # START FROM BEGINNING	
-	while(read(N, $buff, $sizeof))
-        {
-                ($num, $te, $me) = unpack($typedef, $buff);
-        }
-	seek(N, 0, 0);
-	close (N);
-	$num++; # use the highest plus 1
 	
-	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
-	seek(NOTE, 0, SEEK_END); # APPEND
-	local $n = uen($note);
-	local $t = uen($time);
-	$buffer = pack($typedef, $num, $n, $t);
+	# since we have not number, look for the next available:
+	$res = $db->query("SELECT max($fnum) FROM $table") or die "ERROR: $Mysql::dberrstr\n";
+	while(@row = $res->fetchrow)
+	{
+		$number = $row[0];
+	}
+	$number++;
+	$sqlstatement = "INSERT INTO $table VALUES ($number,'$note','$date')";
 
-	print NOTE $buffer;
-	close(NOTE);
-	print "note stored. it has been assigned the number $num.\n\n";
+	$db->query($sqlstatement) 
+		    or die "ERROR: $Mysql::dberrstr\n";
+
+	# everything ok until here!
+	print "note stored. it has been assigned the number $number.\n\n";
 }
 
 
 ############################### DELETE ##################################
 sub del
 {
+	# delete a note
 	&num_bereich; # get @NumBlock from $number
-	$TEMP = "/tmp/note.$$"; # save temporarily in $TEMP
-	system("/bin/touch", $TEMP);
-	open TEMP, "+<$TEMP" or die "Could not open $TEMP($!)\n";
-	open (NOTE, "<$NOTEDB") or die "could not open .notedb\n";
-
-	seek(TEMP, 0, SEEK_END); # APPEND
-
-	$count = 1;
-
-	# read from notedb and write to temp (without number to
-	# be deleted, and with recounted numbers)
-
+	
 	foreach $N (@NumBlock)
 	{
-		# define $Merk's for the exists() test later on...
-		$Merk{$N} = "got";
-	}
-
-	while(read(NOTE, $buff, $sizeof))
-	{
-		($num, $note, $time) = unpack($typedef, $buff);
-		if(exists $Merk{$num})
+		$sqlstatement = "DELETE FROM $table WHERE $fnum = $N";
+		$res = $db->query($sqlstatement) or $ERR = $Mysql::dberrstr;
+		# do not exit if an error occurs - good for int mode!
+		if($ERR)
 		{
-                # drop it, just ignore the contents.
-                $droped = 1;
-                print "note number $num has been deleted.\n";
-        }
+			print "no note with number $N found!\n";
+		}
 		else
-		{   
-                # no keep it
-                $buffer = pack($typedef, $count, $note, $time);
-                seek(TEMP, 0, SEEK_END); # APPEND
-                print TEMP $buffer;
-                $count++;    
-        }
+		{
+			print "note number $N has been deleted.\n";
+		}
 	}
-
-
-
-
-	close(TEMP);
-	close(NOTE);
-	
-	# done, inform the user
-	if($droped eq 1)
+	# recount the notenumbers:
+	$i = 0;
+	$pos = 0;
+	$sqlstatement = "SELECT $fnum FROM $table ORDER BY $fnum";
+	$res = $db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
+	while(@row = $res->fetchrow)
 	{
-		# copy the new one over the old one
-		system("/bin/cp",$TEMP, $NOTEDB);
+		$count[$i] = $row[0];
+		$i++;
 	}
-	else
+	#have all real id's, now recount it:
+	for($pos=0;$pos<$i;$pos++)
 	{
-		print "no note with that number found!\n";
+		$setnum = $pos +1;
+		$sqlstatement = "UPDATE $table SET $fnum = '$setnum' WHERE $fnum = $count[$pos]";
+		$db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
 	}
-	system "/bin/rm -f $TEMP";
 }
-
 
 ############################### EDIT ##################################
 sub edit
 {
-	$address = ($number -1 ) * $sizeof;
-    	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
-    	seek(NOTE, $address, SEEK_SET);
-	read(NOTE, $buff, $sizeof) or die "no note with that number found!\n";
-	($num, $note, $t) = unpack($typedef, $buff);
-        $n = ude($note);
-	# got current enties...
-	
-	# now edit them
-	$TEMP = "/tmp/note.$$";
-	open N, ">$TEMP" or die "Could not open $TEMP\n";
-	select N;
-	print $n; # save decoded to $TEMP
-	close N;
-	select STDOUT;
-
-	# let the user edit it...
-	$editor = &find_editor;
-        if($editor)
-        {
-                system $editor, $TEMP;
-        }
-        else
-        {
-                print "Could not find an editor to use!\n";
-                exit(0);
-        }
-
-	# read it in ($note)
-	$note = "";
-	open N, "<$TEMP" or die "Could not open $TEMP\n";
-	$c = 0;
-	while(<N>)
+	# edit a note
+	$sqlstatement = "SELECT $fnote FROM $table WHERE $fnum = $number";
+	$res = $db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
+	while(@row = $res->fetchrow)
 	{
+		$note = $row[0];
+		$match = "yes";
+	}
+	if($match eq "")
+    	{
+		print "no note with that number found!\n\n";
+		exit(0);
+    	}	
+	$TEMP = "/tmp/note.$USER.$$";
+	open NOTE,">$TEMP" or die "Could not open $TEMP\n";
+	select NOTE;
+
+	print $note;
+	close NOTE;
+	select STDOUT;
+	$editor = &find_editor;
+	if($editor)
+	{
+		system $editor, $TEMP;
+	}
+	else
+	{
+		print "Could not find an editor to use!\n";
+		exit(0);
+	}
+	$note = "";
+	open NOTE,"<$TEMP" or die "Could not open $TEMP\n";
+	$c = 0;
+	while(<NOTE>)
+	{
+		$_ =~ s/'/\\'/g;
 		$note = $note . $_;
 	}
 	chomp $note;
-	close N;
+	close NOTE;
 
-	# privacy!
 	system "/bin/rm -f $TEMP";
-
+	
 	# we got it, now save to db
-	seek(NOTE, $address, SEEK_SET);
-	$n = "";
-	$n = uen($note);
-	local $t = uen($time);
-	$buffer = pack($typedef, $number, $n, $t);
-        print NOTE $buffer;
-	close(NOTE);
+	$sqlstatement = "UPDATE $table SET "
+	. "$fnote = '$note' "
+	. "WHERE $fnum = $number";
+	$db->query($sqlstatement) or die "ERROR: $Mysql::dberrstr\n";
+
 	print "note number $number has been changed.\n";
 }
 
@@ -547,17 +515,16 @@ sub dump
 	# $dump_file
 	open (DUMP, ">$dump_file") or die "could not open $dump_file\n";
 	select DUMP;
-	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
-        seek(NOTE, 0, 0); # START FROM BEGINNING
-        while(read(NOTE, $buffer, $sizeof))
-        {
-                ($num, $note, $time) = unpack($typedef, $buffer);
-                $n = ude($note);
-                $t = ude($time);
-		print STDOUT "dumping note number $num to $dump_file\n";
-                print "Number: $num\nTimestamp: $t\n$n\n";
-        }
-        close(NOTE);
+	$res = $db->query("SELECT $fnum,$fnote,$fdate FROM $table ORDER BY $fnum") 
+		or die "ERROR: $Mysql::dberrstr\n";
+    	
+    	while(@row = $res->fetchrow)
+    	{
+		print STDOUT "dumping note number $row[0] to $dump_file\n";
+                print "Number: $row[0]\nTimestamp: $row[2]\n$row[1]\n";
+    	}
+	
+	
         print "\n";
 	close(DUMP);
 	select STDOUT;
@@ -565,77 +532,52 @@ sub dump
 
 sub import
 {
-	open (N, "<$NOTEDB") or die "could not open .notedb\n";
-        # since we have not number, look for the next available:
-        seek(N, 0, 0); # START FROM BEGINNING   
-        while(read(N, $buff, $sizeof))
-        {
-                ($num, $te, $me) = unpack($typedef, $buff);
-        }
-        seek(N, 0, 0);
-        close (N);
-        $num++; # use the highest plus 1
-
-        # open $dump_file and import it into the notedb
-        open (DUMP, "<$dump_file") or die "could not open $dump_file\n";
-        local $complete=0;
-        local $start = 0;
-	open (NOTE, "+<$NOTEDB") or die "could not open .notedb\n";
-        while(<DUMP>)
-        {
-                chomp $_;
-                if($_ =~ /^Number:\s\d+/)
-                {
-                        if($start == 0)
-                        {
-                                # we have no previous record
-                                ($dummi,$number) = split(/\s/,$_);
-                                $start = 1;
-                        }
-                        else
-                        {
-                                # we got a complete record, save it!
-
-				seek(NOTE, 0, SEEK_END); # APPEND
-				local $n = uen($note);
-				local $t = uen($date);
-				$buffer = pack($typedef, $num, $n, $t);
-				print NOTE $buffer;
-				$num++;
-
-                                print "note number $number from $dump_file inserted into notedb.\n";
-                                $complete = 0; # restet $complete 
-                                $note = "";    # reset $note
-                                $date = "";    # reset $date
-                                ($dummi,$number) = split(/\s/,$_);
-                        }       
-                }
-                elsif($_ =~ /^Timestamp:\s\d+/ && $complete == 0)
-                {
-                        ($dummi,$date,$time) = split(/\s/,$_);
-                        $date = "$date $time";
-                        $complete = 1;
-                }
-                else
-                {
-                        $note .= $_ . "\n";
-                }
-        }
-        if($note ne "" && $date ne "")
-        {
-                # the last record, if existent
-		seek(NOTE, 0, SEEK_END); # APPEND
-		local $n = uen($note);
-		local $t = uen($date);
-		$buffer = pack($typedef, $num, $n, $t);
-		print NOTE $buffer;
-                print "note number $number from $dump_file inserted into notedb.\n";
-        	close(NOTE);
+	# open $dump_file and import it into the notedb
+	open (DUMP, "<$dump_file") or die "could not open $dump_file\n";
+	local $complete=0;
+	local $start = 0;
+	while(<DUMP>)
+	{
+		chomp $_;
+		if($_ =~ /^Number:\s\d+/)
+		{
+			if($start == 0)
+			{
+				# we have no previous record
+				($dummi,$number) = split(/\s/,$_);
+				$start = 1;
+			}
+			else
+			{
+				# we got a complete record, save it!
+				$db->query("INSERT INTO $table VALUES (0,'$note','$date')")
+					or die "ERROR: $Mysql::dberrstr\n";
+				print "note number $number from $dump_file inserted into notedb.\n";
+				$complete = 0; # restet $complete 
+				$note = "";    # reset $note
+				$date = "";    # reset $date
+				($dummi,$number) = split(/\s/,$_);
+			}	
+		}
+		elsif($_ =~ /^Timestamp:\s\d+/ && $complete == 0)
+		{
+			($dummi,$date,$time) = split(/\s/,$_);
+			$date = "$date $time";
+			$complete = 1;
+		}
+		else
+		{
+			$note .= $_ . "\n";
+		}
 	}
+	if($note ne "" && $date ne "")
+        {
+		# the last record, if existent
+                $db->query("INSERT INTO $table VALUES (0,'$note','$date')")
+                        or die "ERROR: $Mysql::dberrstr\n";
+                print "note number $number from $dump_file inserted into notedb.\n";
+        }
 }
-
-
-
 
 
 
@@ -722,7 +664,6 @@ sub interactive
 		elsif($char =~ /^e$/i)
 		{
 			# we have to ask her:
-			$maxlen += $timelen;
 			print "enter number of the note you want to edit: ";
 			$char = <STDIN>;
 			chomp $char;
@@ -732,7 +673,7 @@ sub interactive
 		elsif($char =~ /^s\s+/i)
 		{
 			# she want's to search
-			$maxlen += $timelen;
+			#$maxlen += $timelen;
 			$searchstring = $';
 			chomp $searchstring;
 			&search;
@@ -740,6 +681,7 @@ sub interactive
 		elsif($char =~ /^s$/i)
 		{
 			# we have to ask her:
+			#$maxlen += $timelen;
 			print "enter the string you want to search for: ";
 			$char = <STDIN>;
 			chomp $char;
@@ -969,9 +911,9 @@ sub ude
 
 sub num_bereich
 {
-        # $number is the one we want to delete!
+	# $number is the one we want to delete!
     # But does it contain kommas?
-        local $m = 0;
+	local $m = 0;
     if($number =~ /\,/)
     {
         # accept -d 3,4,7
@@ -983,19 +925,19 @@ sub num_bereich
         local @LR = split(/\-/,$number);
         local @Sorted_LR = ();
 
-        if($LR[0] > $LR[1])
-        {
-                @Sorted_LR = ($LR[1], $LR[0]);
-        }
-        elsif($LR[0] == $LR[1])
-        {
-                # 0 and 1 are the same
-                @Sorted_LR = ($LR[0], $LR[1]);
-        }
-        else
-        {
-                @Sorted_LR = ($LR[0], $LR[1]);
-        }
+	if($LR[0] > $LR[1])
+	{
+		@Sorted_LR = ($LR[1], $LR[0]);
+	}
+	elsif($LR[0] == $LR[1])
+	{	
+		# 0 and 1 are the same
+		@Sorted_LR = ($LR[0], $LR[1]);
+	}
+	else
+	{
+		@Sorted_LR = ($LR[0], $LR[1]);
+	}
 
         for($i=$Sorted_LR[0]; $i<=$Sorted_LR[1]; $i++)
         {
@@ -1036,3 +978,7 @@ All commands except the List command are case insensitive.
 ---------------------------------------------------------------
 ~;
 }
+
+
+
+
