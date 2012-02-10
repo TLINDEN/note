@@ -1,4 +1,4 @@
-note 1.0.3 by Thomas Linden, 02/05/2000
+note 1.0.4 by Thomas Linden, 12/05/2000
 
 
 Introduction
@@ -35,9 +35,11 @@ Requirements
 	You need the following things:
 		o perl installed (5.004x)
 		o The module IO::Seekable and Fcntl, which should be 
-		  already installed with your perl distributuion.
+		  already installed with your perl distributuion if
+		  you want to use the binary database backend.
 		o DBI module and DBI::mysql if you want to use the 
-		  mysql version.
+		  mysql database backend.
+		o Getopt::Long
 
 
 
@@ -255,6 +257,11 @@ Scripting
 		$ export NOTE_PASSWD=secret
 	If the variable is present, note will not ask you for a passphrase! 
 		
+	Another thingy you might find useful is the -r (--raw) command-line flag. This
+	turns note into raw mode being silent, which means it will only print the
+	data without any formatting. Raw mode is available for list and display,
+	since it makes no sense, interactive mode doe not support raw mode.
+
 
 	
 
@@ -407,4 +414,4 @@ Author and Copyright
 Last changed
 ============
 
-	02/05/2000	
+	12/05/2000	

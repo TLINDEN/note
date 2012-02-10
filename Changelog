@@ -1,5 +1,12 @@
 ==================================================================================
 
+1.0.4:
+CHANGED:	Moved from @ARGV-parsing to Getopt::Long, adding options is now
+		much easier and I do now understand my own code ;-)
+ADDED:		--raw, the "Raw Mode", which turns off any formatting of output.
+
+==================================================================================
+
 1.0.3:
 ADDED:		"-" works also for --dump, but in the other direction. It causes
 		note to dump to standard output instead into a file.

@@ -1,7 +1,14 @@
 #!/usr/bin/perl
-# $Author: thomas $ $Id: note,v 1.22 2000/05/01 18:51:40 thomas Exp thomas $ $Revision: 1.22 $
+# $Author: thomas $ $Id: note,v 1.24 2000/05/10 22:59:44 thomas Exp thomas $ $Revision: 1.24 $
 # 
 # $Log: note,v $
+# Revision 1.24  2000/05/10 22:59:44  thomas
+# updated usage to reflect --raw and build it into output 
+# and display subs. 
+#
+# Revision 1.23  2000/05/10 22:19:04  thomas
+# changed to Getopt::Long, added --raw
+#
 # Revision 1.22  2000/05/01 18:51:40  thomas
 # added "-" to sub dump
 #
@@ -68,7 +75,7 @@
 # *** empty log message ***
 #
 #
-# this is the small console program "note" (MYSQL version)
+# this is the small console program "note" 
 # It works similar to some well known GUI note programs,
 # but instead of using X11 it uses the UN*X console.
 # You can edit existing notes, delete them, create new
@@ -86,7 +93,8 @@
 # note is GPL software.
 
 use strict;
-use Data::Dumper;
+#use Data::Dumper;
+use Getopt::Long;
 
 sub usage;
 sub find_editor;
@@ -116,10 +124,13 @@ my (
         $BORDERC, $BORDER_COLOR, $_BORDERC, $NOTEC, $NOTE_COLOR,
         $NUMC, $NUM_COLOR, $_NUMC, $_NOTEC, $TIMEC, $TIME_COLOR,
         $_TIMEC, $TOPICC, $TOPIC_COLOR, $_TOPICC, $SetTitle, $COLOR,
-        $typedef, $MAX_NOTE, $MAX_TIME, @NumBlock, $ALWAYS_EDIT, $HOME,
+        $typedef, $MAX_NOTE, $MAX_TIME, @NumBlock, $ALWAYS_EDIT, $HOME, $has_nothing,
 	$db, $dbname, $dbhost, $DEFAULTDBNAME, $dbuser, $USER, $dbpasswd,
-	$table, $fnum, $fnote, $fdate, $date, $dbdriver, $libpath, $db,
-	$USE_CRYPT, $CRYPT_METHOD, $key
+	$table, $fnum, $fnote, $fdate, $date, $dbdriver, $libpath, $db, @ArgTopics, $Raw,
+	$USE_CRYPT, $CRYPT_METHOD, $key,
+	$opt_, $opt_i, $opt_r, $opt_e, $opt_d, $opt_s,
+	$opt_t, $opt_T, $opt_l, $opt_L, $opt_D, $opt_I,
+	$opt_o, $opt_h, $opt_n, $opt_v
    );
 
 ####################################################################
@@ -146,7 +157,7 @@ $TIME_COLOR   = "black";
 $TOPIC_COLOR = "BLACK";
 $TOPIC = 1;
 $TopicSep = '/';
-$version = "1.0.3";
+$version = "1.0.4";
 if($TOPIC)
 {
     $CurDepth = 1; # the current depth inside the topic "directory" structure...
@@ -159,162 +170,142 @@ if($ARGV[0] eq "")
 {
         $mode = "new";
 }
+elsif($#ARGV == 0 && $ARGV[0] eq "-") {
+	$mode = "new";
+	$NewType = 1;
+	shift;
+	undef $has_nothing;
+}
 else
 {
-  while($ARGV[0] ne "" )
-  {
-        if($ARGV[0] =~ /^\d/)
-        {
-                # first arg is a digit!
-                $number = $ARGV[0];
-                if($mode eq "")
-                {
-                        # change mode only, if started with an option 
-                        # ($mode will be already set)
-                        $mode = "display";
-                }
-                $ARGV[0] = "";
-        }
-	elsif($ARGV[0] eq "-")
-	{
-		$NewType = 1;
-		$mode = "new";
-		$ARGV[0] = "";
-	}
-	elsif($ARGV[0] eq "-i" || $ARGV[0] eq "--interactive")
-	{
+	Getopt::Long::Configure( qw(bundling));	# allow -lr
+	GetOptions (
+	"interactive|i!" => \$opt_i,	# no arg
+	"raw|r!"	 => \$opt_r,	# no arg
+	"edit|e=i"	 => \$opt_e,	# integer, required
+	"delete|d=s"	 => \$opt_d,	# integer, required
+	"search|s=s"	 => \$opt_s,	# string,  required
+	"tree|t!"	 => \$opt_t,	# no arg
+	"long_tree|T!"	 => \$opt_T,	# no arg
+	"list|l:s"	 => \$opt_l,	# string,  optional
+	"long_list|L:s"	 => \$opt_L,	# string,  optional
+	"dump|D:s"	 => \$opt_D,	# string,  optional
+	"import|I:s"	 => \$opt_I,	# string,  optional
+	"overwrite|o!"	 => \$opt_o,	# no arg
+	"help|h|?!"	 => \$opt_h,	# no arg	
+	"version|v!"	 => \$opt_v	# no arg
+	   );
+	$opt_n = shift;			# after that @ARGV contains eventually
+					# a note-number
+					# $opt_ is a single dash, in case of existence!
+	# determine mode
+	if($opt_i) {
 		$mode = "interactive";
-		$ARGV[0] = "";
 	}
-	elsif($ARGV[0] eq "-t" || $ARGV[0] eq "--tree")
-	{
-		$mode = "tree";
-		$ARGV[0] = "";
-	}
-        elsif($ARGV[0] eq "-T" || $ARGV[0] eq "--longtree")
-        {
-                $mode = "tree";
-		$TreeType = "LONG";
-                $ARGV[0] = "";
-        }
-        elsif($ARGV[0] eq "-l" || $ARGV[0] eq "--list")
-        {
-                $mode = "list";
-                my @ArgTopics = split /$TopicSep/,$ARGV[1];
-                $CurDepth += $#ArgTopics + 1 if $ARGV[1];
-                $CurTopic = $ArgTopics[$#ArgTopics]; # use the last element everytime...
-                $ARGV[0] = "";
-        }
-	elsif($ARGV[0] eq "-L" || $ARGV[0] eq "--longlist")
-	{
+	elsif(defined $opt_l || defined $opt_L) {
 		$mode = "list";
-		$ListType = "LONG";
-		$CurTopic = $ARGV[1];
-       		$ARGV[0] = "";
+		if(defined $opt_l) {
+			@ArgTopics = split /$TopicSep/, $opt_l;
+		}
+		else {
+			$ListType = "LONG";
+			@ArgTopics = split /$TopicSep/, $opt_L;
+		}
+		$CurDepth += $#ArgTopics + 1 if($opt_l || $opt_L);
+		$CurTopic = $ArgTopics[$#ArgTopics]; # use the last element everytime...
 	}
-        elsif($ARGV[0] eq "-s" || $ARGV[0] eq "--search")
-        {
-                # searching
-                $mode = "search";
-                $searchstring = $ARGV[1];
-                $ARGV[0] = "";
-        }
-        elsif($ARGV[0] eq "-e" || $ARGV[0] eq "--edit")
-        {
-                if($mode eq "edit")
-                {
-                        # note -e -e !
-                        &usage;
-                        exit(1);
-                }
-                else
-                {
-                        $mode = "edit";
-                        shift;
-                }
-        }
-        elsif($ARGV[0] eq "-d" || $ARGV[0] eq "--delete")
-        {
-                if($mode eq "delete")
-                {
-                        &usage;
-                        exit(1);
-                }
-                else
-                {
-                        $mode = "delete";
-                        shift;
-                }
-        }
-	elsif($ARGV[0] eq "-D" || $ARGV[0] eq "--Dump" || $ARGV[0] eq "--dump")
-	{
+	elsif($opt_t || $opt_T) {
+		$mode = "tree";
+		$TreeType = "LONG" if($opt_T);
+	}
+	elsif(defined $opt_s) {
+		$mode = "search";
+                $searchstring = $opt_s;
+	}
+	elsif($opt_e) {
+		$mode = "edit";
+		$number = $opt_e;
+	}
+	elsif($opt_d) {
+		$mode = "delete";
+		$number = $opt_d;
+	}
+	elsif(defined $opt_D) {
 		$mode = "dump";
-		$dump_file = $ARGV[1];
-		$ARGV[0] = "";
-		if($dump_file eq "")
-		{
-			$dump_file = "note.dump.$$";
-			print "no dumpfile specified, using $dump_file.\n";
+		if(!$opt_) {
+			if($opt_D ne "") {
+				$dump_file = $opt_D;
+			}
+			else {
+				$dump_file = "note.dump.$$";
+	                        print "no dumpfile specified, using $dump_file.\n";
+			}
+		}
+		else {
+			$dump_file = "-"; # use STDIN
 		}
 	}
-        elsif($ARGV[0] eq "-o" || $ARGV[0] eq "--overwrite")
-        {
-                $mode = "import";
-		$ImportType = $ARGV[0];
-                if($ARGV[1] eq "-I" || $ARGV[1] eq "--Import") {
-                        $dump_file = $ARGV[2];
-                }
-                else {
+	elsif(defined $opt_I) {
+		$mode = "import";
+		if(!$opt_) {
+			if($opt_I ne "") {
+				$dump_file = $opt_I;
+			}
+			else {
+				print "Import-error! No dump_file specified!\n";
+				exit(1);
+			}
+		}
+		else {
+			$dump_file = "-";
+		}
+	}
+	elsif($opt_v) {
+		print "This is note $version by Thomas Linden <tom\@daemon.de>.\n";
+                exit(0);
+	}
+	elsif($opt_h) {
+		&usage;
+	}
+	else {
+		$has_nothing = 1;
+	}
+	### determine generic options
+        if($opt_n =~ /^[\d+\-?\,*]+$/) {
+                # first arg is a digit!
+		if($mode eq "") {
+                	$number = $opt_n;
+                	$mode = "display";
+			undef $has_nothing;
+		}
+		else {
+			print "mode <$mode> does not take a numerical argument!\n";
+			exit(1);
+		}
+        }
+	elsif($opt_n ne "") {
+		print "Unknown option: $opt_n\n";
+		&usage;
+	}
+	if($opt_r) {
+		$Raw = 1;
+	}
+	if($opt_o) {
+		$ImportType = "overwrite";
+		if(!$opt_I) {
 			print "--overwrite is only suitable for use with --import!\n";
 			exit(1);
                 }
-                $ARGV[0] = "";
-                if($dump_file eq "")
-                {
-                        print "No dumpfile specified.\n";
-                        exit(1);
-                }
-        }
-	elsif($ARGV[0] eq "-I" || $ARGV[0] eq "--Import" || $ARGV[0] eq "--import")
-        {
-                $mode = "import";
-		if($ARGV[1] eq "-o" || $ARGV[1] eq "-overwrite") {
-                	$dump_file = $ARGV[2];
-			$ImportType = $ARGV[1];
-		}
-		else {
-			$dump_file = $ARGV[1];
-			$ImportType = $ARGV[2];
-		}
-                $ARGV[0] = "";
-                if($dump_file eq "")
-                {
-                        print "No dumpfile specified.\n";
-                        exit(1);
-                }
-        }
-        elsif($ARGV[0] eq "-v" || $ARGV[0] eq "--version")
-        {
-                print "This is note $version by Thomas Linden <tom\@daemon.de>.\n";
-                exit(0);
-        }
-        elsif($ARGV[0] eq "-h" || $ARGV[0] eq "--help")
-        {
-                &usage;
-                exit(0);
-        }
-        else
-        {
-                &usage;
-        		exit(0);
-        }
-  }
+	}
+	#####
+}
+if($has_nothing && $mode eq "")
+{
+	&usage;
 }
 
+
 # open the configfile.
-
-
-
 if(-e $CONF)
 {
 	eval `cat $CONF`;
@@ -481,8 +472,13 @@ sub display
 		($note, $date) = $db->get_single($N);
 		if($note)
 		{
-			output($N, $note, $date, "SINGLE");
-			print "\n";		
+			if($Raw) {
+				print "$N\n$date\n$note\n\n";
+			}
+			else {
+				output($N, $note, $date, "SINGLE");
+				print "\n";
+			}		
 			$match = 1;
 		}
 	}
@@ -499,7 +495,6 @@ sub search
 	if($searchstring eq "")
 	{
 		&usage;
-		exit(1);
 	}
 	print "searching the database $dbname for \"$searchstring\"...\n\n";
 
@@ -524,7 +519,7 @@ sub search
 sub list
 {
 	my(@topic,@RealTopic, $i,$t,$n,$num,@CurItem,$top,$in,%res);
-	if($mode ne "interactive")
+	if($mode ne "interactive" && !$Raw)
         {
                 print "List of all existing notes:\n\n";
         }
@@ -1097,6 +1092,8 @@ Options:
 				which causes note, silently to read in a dump from STDIN.
 -o	--overwrite		only suitable for use with --Import. Overwrites an 
 				existing notedb.
+-r	--raw			raw mode, out will not be formatted. Works not in interactive
+				mode, only on cmd-line for list and display.
 -i	--interactive		interactive mode
 -				if you run note only with one dash: "note -", then it will
 				read in a new note from STDIN until EOF, this makes it
@@ -1116,6 +1113,8 @@ Options:
    time it runs. You can avoid this behavior by setting the environment-variable
    \$NOTE_PASSWD. You will need this for example, if you call note from a script.
 ~;
+  #my ($package, $filename, $line) = caller;
+  #print "called from line $line\n";
   exit 1;
 }
 sub find_editor {
@@ -1155,27 +1154,30 @@ sub output
 			{
 				$SP = " " x ($maxlen-2 - $PathLen);
 			}
-			print C $LINE;
-		
-			print C "$L $NUMC#$_NUMC  ";
-			if($ListType eq "LONG")
-			{
-				print C " $TIMEC" . "creation date$_TIMEC           ";
+			if(!$Raw) { 
+				# no title in raw-mode!
+				print C $LINE;
+			
+				print C "$L $NUMC#$_NUMC  ";
+				if($ListType eq "LONG")
+				{
+					print C " $TIMEC" . "creation date$_TIMEC           ";
+				}
+				else
+				{
+					print $LONGSPC;
+				}
+                	        if($TOPIC)
+                	        {
+                	            print C $TOPICC . "$PATH    $_TOPICC$SP$R\n";
+                	        }
+                	        else
+                	        {
+                	            print C $NOTEC . "note$_NOTEC$SP$R\n";
+                	        }
+	
+	                	print C $LINE;
 			}
-			else
-			{
-				print $LONGSPC;
-			}
-                        if($TOPIC)
-                        {
-                            print C $TOPICC . "$PATH    $_TOPICC$SP$R\n";
-                        }
-                        else
-                        {
-                            print C $NOTEC . "note$_NOTEC$SP$R\n";
-                        }
-
-                	print C $LINE;
 			$SetTitle = 1;
 		}
 		$title = "";
@@ -1186,34 +1188,49 @@ sub output
         	{
         	    $diff = $maxlen - $len;
 		    $Space = " " x $diff;	
-                    if($num eq "-")
-                    {
+		    if(!$Raw) {
+                      if($num eq "-")
+                      {	
                         $title = $BORDERC . $TOPICC . "\"" . $note . "\"" . $_TOPICC . $Space . "$_BORDERC";
-                    }
-                    else
-                    {
+                      }
+                      else
+                      {
                         $title = $BORDERC . $NOTEC . "\"" . $note . "\"" . $_NOTEC . $Space . "$_BORDERC";
-                    }
-
+                      }
+		   }
+		   else {
+			$title = $note;
+		   }
         	}
 		else
         	{
         	        $title = substr($note,0,($maxlen - 2 - $nlen));
-        	        $title = $BORDERC . $NOTEC . "\"" . $title . "...\"$_NOTEC$_BORDERC";
-        	}
-		# $title should now look as: "A sample note                       "
-       		print C "$L $NUMC$num$_NUMC $R";
-		if($ListType eq "LONG")
-		{
-			print C "$L$TIMEC" . $time . " $_TIMEC$R"; 
+			if(!$Raw) {
+        	        	$title = $BORDERC . $NOTEC . "\"" . $title . "...\"$_NOTEC$_BORDERC";
+        		}
 		}
-		print C "$L $NOTEC" . $title . "$_NOTEC $R\n";
-
-
-		print C $LINE;
+		if($Raw) {
+			print "$num  ";
+			print "$time  " if($ListType eq "LONG");
+			if($title =~ /^ => (.*)$TopicSep (.*)$/) {
+				$title = "$1$TopicSep $2"; # seems to be a topic!
+			}
+			print "$title\n";
+		}
+		else {
+			# $title should now look as: "A sample note                       "
+       			print C "$L $NUMC$num$_NUMC $R";
+			if($ListType eq "LONG")
+			{
+				print C "$L$TIMEC" . $time . " $_TIMEC$R"; 
+			}
+			print C "$L $NOTEC" . $title . "$_NOTEC $R\n";
+			print C $LINE;
+		}
 	}
 	else
 	{
+		# we will not reach this in raw-mode, therefore no decision here!
 		chomp $note;
 		$Space = " " x ($maxlen - 16);
 		$SP = " " x ($maxlen + 13);
