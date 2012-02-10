@@ -1,5 +1,26 @@
 ==================================================================================
 
+0.9:
+FIXED:		There were many new bugs after my last changes *grrrrr*. fixed.
+		Works now properly, with both backends!
+FIXED:		and another bug: recounting of numbers did not take care about
+		the existing order! If you deleted note #12, then note #13 became
+		not neccessarily #12! Instead it becames any other number (kind of
+		randomly...). 
+CHANGED:	NOTEDB::binary set_del function changed, it does no more require
+		a temporary file for number recount. Instead it uses get_all and
+		stores all notes in RAM and then rewrites the database.
+FIXED:		fixed the set_new call within note. It used 0 as the first param
+		(number) which is not useful since we dont have support for auto-
+		increment from all database backends.
+FIXED:		fixed the function set_recountnum in NITEDB::mysql, it was also
+		incorrect :-((( 0.8 seemed to be a very bad early alpha...........
+FIXED:		there was a bug in NOTEDB::binary which caused not to recount note
+		numbers after deleting one :-(
+
+
+==================================================================================
+
 0.8:
 ADDED:		NOTEDB::binary. so now 0.8 is ready for shipping !
 FIXED: 		regexp bug fixed. It was only possible to delete 2 items together

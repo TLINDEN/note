@@ -1,7 +1,15 @@
 #!/usr/bin/perl
-# $Author: thomas $ $Id: note,v 1.13 2000/03/19 11:53:32 thomas Exp thomas $ $Revision: 1.13 $
+# $Author: thomas $ $Id: note,v 1.15 2000/03/19 23:41:04 thomas Exp thomas $ $Revision: 1.15 $
 # 
 # $Log: note,v $
+# Revision 1.15  2000/03/19 23:41:04  thomas
+# changed set_del, now no extra TEMP file is required!
+# instead I get it from $this->get_all() !
+#
+# Revision 1.14  2000/03/19 22:51:49  thomas
+# Bug in NOTEDB::binary fixed, recount of nubers was
+# incorrect.
+#
 # Revision 1.13  2000/03/19 11:53:32  thomas
 # edit bug fixed (ude => uen)
 #
@@ -115,7 +123,7 @@ $TIME_COLOR   = "black";
 $TOPIC_COLOR = "BLACK";
 $TOPIC = 1;
 $TopicSep = '/';
-$version = "0.8 r1.12";
+$version = "0.9 r1.15";
 if($TOPIC)
 {
     $CurDepth = 1; # the current depth inside the topic "directory" structure...
@@ -586,7 +594,7 @@ sub new
 ############################### DELETE ##################################
 sub del
 {
-    my($i,@count, $setnum, $pos, $ERR);
+    	my($i,@count, $setnum, $pos, $ERR);
 	# delete a note
 	&num_bereich; # get @NumBlock from $number
 	foreach $_ (@NumBlock)
@@ -602,6 +610,8 @@ sub del
 		}
 	}
 	# recount the notenumbers:
+	$db->set_recountnums();
+
 	@NumBlock = ();
 }
 
@@ -683,7 +693,7 @@ sub dump
 
 sub import
 {
-    my($num, $start, $complete, $dummi, $note, $date, $time);
+    my($num, $start, $complete, $dummi, $note, $date, $time, $number);
 	# open $dump_file and import it into the notedb
 	open (DUMP, "<$dump_file") or die "could not open $dump_file\n";
 	$complete=0;
@@ -702,7 +712,8 @@ sub import
 			else
 			{
 				# we got a complete record, save it!
-				$db->set_new(0,$note, $date);
+				$number = $db->get_nextnum();
+				$db->set_new($number,$note, $date);
 				print "note number $number from $dump_file inserted into notedb.\n";
 				$complete = 0;  
 				$note = "";    
@@ -724,7 +735,8 @@ sub import
 	if($note ne "" && $date ne "")
         {
 		# the last record, if existent
-		$db->set_new(0,$note, $date);
+		$number = $db->get_nextnum();
+		$db->set_new($number,$note, $date);
                 print "note number $number from $dump_file inserted into notedb.\n";
         }
 }
@@ -1122,9 +1134,10 @@ sub ude
 sub num_bereich
 {
     my($m,@LR,@Sorted_LR,$i);
-	# $number is the one we want to delete!
+    # $number is the one we want to delete!
     # But does it contain kommas?
-	$m = 0;
+    @NumBlock = (); #reset
+    $m = 0;
     if($number =~ /\,/)
     {
         # accept -d 3,4,7

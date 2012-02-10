@@ -1,4 +1,8 @@
 #!/usr/bin/perl
+# $Id: binary.pm,v 1.3 2000/03/20 00:36:50 thomas Exp thomas $
+# Perl module for note
+# binary database backend. see docu: perldoc NOTEDB::binary
+#
 use strict;
 use Data::Dumper;
 use IO::Seekable;
@@ -8,7 +12,7 @@ use Fcntl qw(LOCK_EX LOCK_UN);
 
 # Globals:
 my ($NOTEDB, $sizeof, $typedef,$version);
-$version = "(NOTEDB::binary, 1.1)";
+$version = "(NOTEDB::binary, 1.3)";
 
 
 sub new
@@ -107,7 +111,7 @@ sub get_nextnum
 	while(read(NOTE, $buffer, $sizeof)) {
 		($num, $te, $me) = unpack($typedef, $buffer);
 	}
-	$num++;
+	$num += 1;
 	flock NOTE, LOCK_UN;
         close NOTE;
 
@@ -140,38 +144,6 @@ sub get_search
 	return %res;
 }
 
-
-
-sub set_recountnums
-{
-	my $this = shift;
-	my(@count, $i, $num, $setnum, $buffer, $buff, $note, $date);
-
-        open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
-        flock NOTE, LOCK_EX; 
-
-	$setnum = 1;
-        my $TEMP = "/tmp/note.$$"; # save temporarily in $TEMP
-        system("/bin/touch", $TEMP);
-        open TEMP, "+<$TEMP" or die "Could not open $TEMP($!)\n";
-	
-	seek(NOTE, 0, 0); # START FROM BEGINNING
-	while(read(NOTE, $buffer, $sizeof)) {
-		($num, $note, $date) = unpack($typedef, $buffer);
-		$buff = pack($typedef, $setnum, $note, $date);
-		seek(TEMP, 0, IO::Seekable::SEEK_END); # APPEND
-		print TEMP $buffer;
-		$setnum++;
-	}
-	close(TEMP);
-
-	flock NOTE, LOCK_UN;
-	close NOTE;
-
-	system("/bin/cp",$TEMP, $NOTEDB);
-
-	unlink $TEMP;
-}
 
 
 
@@ -215,40 +187,55 @@ sub set_new
 sub set_del
 {
         my($this, $num) = @_;
-	my($note, $date, $T, $setnum, $buffer, $buff, $n);
+	my(%orig, $note, $date, $T, $setnum, $buffer, $n, $N, $t);
 
         $setnum = 1;
-        my $TEMP = "/tmp/note.$$"; # save temporarily in $TEMP
-        system("/bin/touch", $TEMP);
-        open TEMP, "+<$TEMP" or die "Could not open $TEMP($!)\n";
 
-	open NOTE, "+<$NOTEDB" or die "could not open $NOTEDB\n";
+	%orig = $this->get_all();
+	return "ERROR" if (! exists $orig{$num});
+
+	delete $orig{$num};
+
+	# overwrite, but keep number!
+	open NOTE, ">$NOTEDB" or die "could not open $NOTEDB\n";
         flock NOTE, LOCK_EX; 
-
         seek(NOTE, 0, 0); # START FROM BEGINNING
-        while(read(NOTE, $buffer, $sizeof)) {
-                ($n, $note, $date) = unpack($typedef, $buffer);
-                $buff = pack($typedef, $setnum, $note, $date);
-		if($n != $num) {
-                	seek(TEMP, 0, IO::Seekable::SEEK_END); # APPEND
-                	print TEMP $buff;
-		}
-		else
-		{
-			$T = $date;
-		}
+	foreach $N (keys %orig) {
+		$n = uen($orig{$N}->{'note'});
+		$t = uen($orig{$N}->{'date'});
+		$buffer = pack( $typedef, $N, $n, $t); # keep orig number, note have to call recount!
+		print NOTE $buffer;
+		seek(NOTE, 0, IO::Seekable::SEEK_END);
 		$setnum++;
-        }
-        close(TEMP);
-
+	}
         flock NOTE, LOCK_UN;
         close NOTE;
+	return;
+}
 
-        system("/bin/cp",$TEMP, $NOTEDB);
+sub set_recountnums
+{
+	my($this) = @_;
+	my(%orig, $note, $date, $T, $setnum, $buffer, $n, $N, $t);
+	
+	$setnum = 1;
+	%orig = $this->get_all();
 
-        unlink $TEMP;        
-
-	return "ERROR" if($T eq ""); # signal success!
+	open NOTE, ">$NOTEDB" or die "could not open $NOTEDB\n";
+	flock NOTE, LOCK_EX;
+	seek(NOTE, 0, 0); # START FROM BEGINNING
+	
+        foreach $N (sort {$a <=> $b} keys %orig) {
+                $n = uen($orig{$N}->{'note'});
+                $t = uen($orig{$N}->{'date'});
+                $buffer = pack( $typedef, $setnum, $n, $t);
+                print NOTE $buffer;
+                seek(NOTE, 0, IO::Seekable::SEEK_END);
+                $setnum++;
+        }
+	flock NOTE, LOCK_UN;
+	close NOTE;
+        return;
 }
 
 sub uen

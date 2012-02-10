@@ -1,4 +1,9 @@
 #!/usr/bin/perl
+# $Id: mysql.pm,v 1.2 2000/03/20 00:36:55 thomas Exp thomas $
+# Perl module for note
+# mysql database backend. see docu: perldoc NOTEDB::binary
+#
+
 use DBI;
 use strict;
 use Data::Dumper;
@@ -11,7 +16,7 @@ $table = "note";
 $fnum = "number";
 $fnote = "note";
 $fdate = "date";
-$version = "(NOTEDB::mysql, 1.0)";
+$version = "(NOTEDB::mysql, 1.2)";
 
 # prepare some std statements... #####################################################################
 my $sql_getsingle	= "SELECT $fnote,$fdate FROM $table WHERE $fnum = ?";
@@ -124,24 +129,6 @@ sub get_search
 
 
 
-sub set_recountnums
-{
-	my $this = shift;
-	my(@count, $i, $num, $setnum);
-	$setnum = 1;
-	my $statement = $DB->prepare($sql_incrnum) || die $DB->errstr();
-	my $sub_statement = $DB->prepare($sql_setnum) || die $DB->errstr();
-	
-	$statement->execute || die $DB->errstr();
-	$statement->bind_columns(undef, \($num)) || die $DB->errstr();
-
-	while($statement->fetch) {
-		$sub_statement->execute($setnum,$num) || die $DB->errstr();
-		$setnum++;
-	}
-}
-
-
 
 sub set_edit
 {
@@ -171,24 +158,41 @@ sub set_del
 {
         my($this, $num) = @_;
 	my($note, $date, $T);
-        
-	my $stat = $DB->prepare($sql_getsingle) || die $DB->errstr();
-        $stat->execute($num) || die $DB->errstr();
-        $stat->bind_columns(undef, \($note, $date)) || die $DB->errstr();
-        while($stat->fetch) {
-                $T = $date;
-        }
+       
+	($note, $date) = $this->get_single($num);
 
-        my $statement = $DB->prepare($sql_del) || die $DB->errstr();
+	return "ERROR"  if ($date !~ /^\d/);
 
-        $statement->execute($num) || die $DB->errstr();
-
-	$this->set_recountnums();
-
-	return "ERROR" if($T eq ""); # signal success!
+	# delete record!
+	my $statement = $DB->prepare($sql_del) || die $DB->errstr();
+	$statement->execute($num) || die $DB->errstr();
+	return;
 }
 
 
+sub set_recountnums
+{
+        my $this = shift;
+        my(@count, $i, $num, $setnum, $pos);
+        $setnum = 1;
+	$pos=0; $i=0; @count = ();
+
+	my $statement = $DB->prepare($sql_incrnum) || die $DB->errstr();
+	$statement->execute || die $DB->errstr();
+        $statement->bind_columns(undef, \($num)) || die $DB->errstr();
+	# store real id's in an array!
+	while($statement->fetch) {
+		$count[$i] = $num;
+		$i++;
+	}
+       
+	# now recount them! 
+	my $sub_statement = $DB->prepare($sql_setnum) || die $DB->errstr();
+	for($pos=0;$pos<$i;$pos++) {
+		$setnum = $pos +1;
+		$sub_statement->execute($setnum,$count[$pos]) || die $DB->errstr();
+	}
+}
 
 1; # keep this!
 

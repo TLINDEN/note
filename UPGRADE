@@ -1,3 +1,29 @@
-if you are upgrading an existing note installation,
-you need to reedit your configfile, since there are now
-some new required options!
+In any case: BACKUP your existing note database!!!!!!!
+The format has not changed, but some default values
+(see the new config file-sample). Use this command
+to save your note database with your *old* version
+of note:
+	"note -D"
+This works with both the mysql and the binary version.
+
+You need to reedit your configfile, since there are now
+some new required options! The most important: $dbdriver.
+
+If you used previously a binary db without a config, then
+you will get trouble with your existing notedb because the
+default values for field sizes has been changed (it was too
+small)! You have two choices: 
+1. make a database dump ("note -D") with your old note-version.
+2. remove your existing .notedb (and/or back it up!)
+3. install the new note version
+4. import the previously created dump ("note -I note.dump.23112")
+or
+Edit the config to reflect your field size settings. Set the
+fields MAX_TIME=64 and MAX_NOTE=1024 (which was the default of
+previous versions of note).
+
+
+AGAIN:	YOU HAVE BEEN WARNED! DO NOT UPGRADE WITHOUT MADE A 
+	BACKUP OF YOUR DATABASE! I AM NOT RESPONSIBLE IF YOU
+	LOOSE DATA!
+	
