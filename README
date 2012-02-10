@@ -1,4 +1,4 @@
-note 1.2.3 by Thomas Linden, 08/03/2003
+note 1.2.4 by Thomas Linden, 22/03/2003
 =======================================
 
 Introduction
@@ -73,6 +73,8 @@ o Note has scripting capabilities, you can create a new note by piping
 o for better performance, note can cache the database for listings
   or searching.
 o It can be installed without root-privileges.
+o if Term::ReadLine (and Term::ReadLine::Gnu) is installed, history
+  and auto-completion are supported in interactive mode.
 o Last, a while ago a user stated: "... it simply does, what it
   says ..."
 
@@ -92,7 +94,8 @@ You need the following things:
 	  mysql database backend.
 	o The module DB_FILE if you want to use the DBM module.
 	o Getopt::Long (part of perl std ditribution)
-
+	o Term::ReadLine and optionally Term::ReadLine::Gnu if
+	  you want to use the auto-completion and history functionality.
 
 
 Installation
@@ -202,4 +205,4 @@ and I'll add you.
 Last changed
 ============
 
-08/03/2003
+22/03/2003

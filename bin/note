@@ -25,7 +25,7 @@
 
 use strict;
 no strict 'refs';
-use Data::Dumper;
+#use Data::Dumper;
 use Getopt::Long;
 
 #
@@ -97,7 +97,7 @@ my (
     $TYPE, $mode, $NoteKey, $TempDir, %Color, @LastTopic,
     $version, $CurTopic, $CurDepth, $WantTopic,$time_format,
     $sizeof, %TP, $TreeType, $ListType, $SetTitle,
-    @ArgTopics, $key, $typedef, @NumBlock, $has_nothing,
+    @ArgTopics, $key, $typedef, @NumBlock, $has_nothing, @completion_topics, @completion_notes,
    );
 
 
@@ -126,7 +126,7 @@ $TIME_COLOR   	= "blue";
 $TOPIC_COLOR 	= "bold";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.2.3";
+$version 	= "1.2.4";
 if ($TOPIC) {
   $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 }
@@ -673,13 +673,18 @@ sub list {
       else {
 	$PATH = $TopicSep;
       }
+
+      @completion_topics = ();
+      @completion_notes  = ();
       # we are at top level, print a list of topics...
       foreach $top (sort(keys %TP)) {
+	push @completion_topics, $top;
 	output("-", " => ". $top . "$TopicSep ($TP{$top} notes)",
 	       " Sub Topic         ");
       }
       #print Dumper(@CurItem);
       for ($in=0;$in<$i;$in++) {
+	push @completion_notes, $CurItem[$in]->{'num'};
 	output( $CurItem[$in]->{'num'},
 		$CurItem[$in]->{'note'},
 		$CurItem[$in]->{'time'} );
@@ -955,6 +960,7 @@ sub clear {
 sub interactive {
     my($B, $BB, $menu, $char, $Channel);
     $Channel = $|;
+    local $| = 1;
     # create menu:
     $B = "<white_black>";
     $BB = "</white_black>";
@@ -968,24 +974,42 @@ sub interactive {
 	         . $B . "E" . $BB . "-Edit "
 	         . $B . "?" . $BB . "-Help "
 	         . $B . "Q" . $BB . "-Quit] "; # $CurTopic will be empty if $TOPIC is off!
+
     # per default let's list all the stuff:
     # Initially do a list command!
     &determine_width;
     $ListType = ($DEFAULT_LIST eq "LONG") ? "LONG" : "";
     &list;
 
+    my ($term, $prompt, $attribs);
+    eval { require Term::ReadLine; };
+    if (!$@) {
+      $term = new Term::ReadLine('');
+      $attribs = $term->Attribs;
+      $attribs->{completion_function} = \&complete;
+    }
+
     for (;;) {
       $ListType = ($DEFAULT_LIST eq "LONG") ? "LONG" : "";
       undef $SetTitle;
       if ($CurDepth > 2) {
-	print C $menu . $TOPICC . "../" . $CurTopic . $_TOPICC . ">";
+	print C $menu . $TOPICC . "../" . $CurTopic . $_TOPICC . "> ";
       }
       else {
-	print C $menu . $TOPICC . $CurTopic . $_TOPICC . ">";
+	print C $menu . $TOPICC . $CurTopic . $_TOPICC . "> ";
       }
+
       # endless until user press "Q" or "q"!
-      $char = <STDIN>;
-      chomp $char;
+      if ($term) {
+	$char = $term->readline("");
+	$term->addhistory($char) if $char =~ /\S/;
+	$char =~ s/\s*$//; # remove trailing whitespace (could come from auto-completion)
+      }
+      else {
+	$char = <STDIN>;
+	chomp $char;
+      }
+
       &determine_width;
       &clear;
 
@@ -1173,7 +1197,7 @@ Read the note(1) manpage for more details.
   }
 
 sub find_editor {
-  return $PreferredEditor || $ENV{"VISUAL"} || $ENV{"EDITOR"} || "vi" || "vim" || "pico";
+  return $PreferredEditor || $ENV{"VISUAL"} || $ENV{"EDITOR"} || "vi";
 }
 
 #/
@@ -1194,12 +1218,21 @@ sub format {
     $IN     =~ s/<(.*)>/<$1I>/;
     $_IN    =~ s/<(.*)>/<$1I>/;
 
-    $note =~ s/\*\*([^\*^\*]*)\*\*/$BN$1$_BN/g;
-    $note =~ s/__([^_^_]*)__/$UN$1$_UN/g;
-    $note =~ s/{{([^}^}]*)}}/$IN$1$_IN/g;
-    $note =~ s#//([^/^/]*)//#<hide>$1</hide>#g;
+    if ($FormatText eq "simple") {
+      $note =~ s/\*([^\*]*)\*/$BN$1$_BN/g;
+      $note =~ s/_([^_]*)_/$UN$1$_UN/g;
+      $note =~ s/{([^}]*)}/$IN$1$_IN/g;
+      $note =~ s#(?<!<)/([^/]*)/#<hide>$1</hide>#g;
+    }
+    else {
+      $note =~ s/\*\*([^\*]{2,})\*\*/$BN$1$_BN/g;
+      $note =~ s/__([^_]{2,})__/$UN$1$_UN/g;
+      $note =~ s/{{([^}]{2,})}}/$IN$1$_IN/g;
+      $note =~ s#//([^/]{2,})//#<hide>$1</hide>#g;
+    }
+
+    $note =~ s/(<\/.*>)/$1$NOTEC/g;
   }
-  $note =~ s/(<\/.*>)/$1$NOTEC/g;
   $note;
 }
 
@@ -1518,8 +1551,7 @@ sub print_tree {
 }
 
 
-sub getconfig
-  {
+sub getconfig {
     my($configfile) = @_;
     my ($home, $value, $option);
     # checks are already done, so trust myself and just open it!
@@ -1583,8 +1615,33 @@ sub getconfig
     $libpath =~ s/\/*$//;
 
     close CONFIG;
-  }
+}
 
+
+sub complete {
+  my ($text, $line, $start) = @_;
+
+  if ($line =~ /^\s*$/) {
+    # notes or topics allowed
+    return @completion_topics, @completion_notes;
+  }
+  if ($line =~ /^cd/) {
+    # only topics allowed
+    return @completion_topics, "..";
+  }
+  if ($line =~ /^l/i) {
+    # only topics allowed
+    return @completion_topics;
+  }
+  if ($line =~ /^[ed]/) {
+    # only notes allowed
+    return @completion_notes;
+  }
+  if ($line =~ /^[snt\?q]/i) {
+    # nothing allowed
+    return ();
+  }
+}
 
 
 

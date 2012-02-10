@@ -1,4 +1,4 @@
-# 1.2.2        -*- sh -*- 
+# 1.2.4        -*- sh -*- 
 # This is a sample config for the note script
 # There are useful defaults set in note itself.
 # 
@@ -148,7 +148,7 @@ TopicColor		BLACK
 # Additional to colors, you can also do a little bit of formatting your
 # notes (bold, underlined, italic), see README!
 # You need to set this Option to 1, if you decide to make use of this
-# capabily
+# capabily. You can also set it to 'simple' to achieve a simplified syntax.
 FormatText		1
 
 

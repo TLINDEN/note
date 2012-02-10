@@ -439,20 +439,28 @@ black, red, green, yellow, blue, magenta, cyan and white.
 
 Beside colorizing text, you can also create bold or underlined text! If
 you decide to use this (additional) feature, you need to set the
-Config-Option "FormatNotes" to 1 which turns it on.
+Config-Option "FormatText" to 1 which turns it on.
 Usage is very straightforward, if a word (a word is defined as some
 text with at least one space surrounded) is between a magic mark-
 character. Here are the available things, you can do:
 
- bold:     **word**
- underlined:__word__
- inverse:{{word}}
- hidden: //word//
+ bold:       **word**
+ underlined: __word__
+ inverse:    {{word}}
+ hidden:     //word//
 
 The text will be formatted using the actually note-color.
 
 The hidden formatting will use blue forground and blue background
 to hide a string from the terminal, which is usefull for passwords.
+
+If you set "FormatText" to I<simple> then the formatting can be
+done this way instead:
+
+ bold:       *word*
+ underlined: _word_
+ inverse:    {word}
+ hidden:     /word/
 
 =head1 ENCRYPTION
 
@@ -505,6 +513,6 @@ Thomas Linden <tom@daemon.de>
 
 =head1 VERSION
 
-1.2.3 (08/03/2003)
+1.2.4 (19/03/2003)
 
 =cut

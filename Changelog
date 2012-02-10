@@ -1,4 +1,17 @@
 ================================================================================
+1.2.4:
+CHANGED:    	in the function find_editor() the alternatives vim and pico
+		has been removed because they would never had a match.
+FIXED:		applied patch by Bill Barnard <bill@barnard-engineering.com>
+		which fixes a bug in the sub format() which features bold
+		hidden or underlined text. Now its possible to use a ^ char
+		in hidden texts too. I applied the same for the other regexps.
+ADDED:		if the config variable FormatText is set to 'simple' then
+		only one * _ { or / will make the text tagged with them to
+		be displayed formatted, instead of two.
+ADDED:		added Term::ReadLine support (auto-completion and history).
+
+================================================================================
 1.2.3:
 ADDED:		if FormatText is enabled one can now use a new special format
 		tag: //. If a text is surrounded by two slashes, i.e.: //blah//
