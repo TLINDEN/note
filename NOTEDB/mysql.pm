@@ -6,7 +6,7 @@
 
 package NOTEDB::mysql;
 
-$NOTEDB::mysql::VERSION = "1.50";
+$NOTEDB::mysql::VERSION = "1.51";
 
 use DBI;
 use strict;
@@ -35,24 +35,25 @@ sub new {
     my $fnum     = "number";
     my $fnote    = "note";
     my $fdate    = "date";
+    my $ftopic   = "topic";
 
     my $database;
     if ($dbport) {
-	$database = "DBI:$dbdriver:$dbname;host=$dbhost:$dbport";
+	$database = "DBI:mysql:$dbname;host=$dbhost:$dbport";
     }
     else {
-	$database = "DBI:$dbdriver:$dbname;host=$dbhost";
+	$database = "DBI:mysql:$dbname;host=$dbhost";
     }
 
-    $self->{table}         = "table";
+    $self->{table}         = "note";
 
-    $self->{sql_getsingle} = "SELECT $fnote,$fdate FROM $self->{table} WHERE $fnum = ?";
-    $self->{sql_all}       = "SELECT $fnum,$fnote,$fdate FROM $self->{table}";
+    $self->{sql_getsingle} = "SELECT $fnote,$fdate,$ftopic FROM $self->{table} WHERE $fnum = ?";
+    $self->{sql_all}       = "SELECT $fnum,$fnote,$fdate,$ftopic FROM $self->{table}";
     $self->{sql_nextnum}   = "SELECT max($fnum) FROM $self->{table}";
     $self->{sql_incrnum}   = "SELECT $fnum FROM $self->{table} ORDER BY $fnum";
     $self->{sql_setnum}    = "UPDATE $self->{table} SET $fnum = ? WHERE $fnum = ?";
-    $self->{sql_edit}      = "UPDATE $self->{table} SET $fnote = ?,$fdate = ? WHERE $fnum = ?";
-    $self->{sql_insertnew} = "INSERT INTO $self->{table} VALUES (?, ?, ?)";
+    $self->{sql_edit}      = "UPDATE $self->{table} SET $fnote = ?, $fdate = ?, $ftopic = ? WHERE $fnum = ?";
+    $self->{sql_insertnew} = "INSERT INTO $self->{table} VALUES (?, ?, ?, ?)";
     $self->{sql_del}       = "DELETE FROM $self->{table} WHERE $fnum = ?";
     $self->{sql_del_all}   = "DELETE FROM $self->{table}";
 
@@ -95,14 +96,18 @@ sub version {
 sub get_single {
     my($this, $num) = @_;
 
-    my($note, $date);
+    my($note, $date, $topic);
     my $statement = $this->{DB}->prepare($this->{sql_getsingle}) || die $this->{DB}->errstr();
 
     $statement->execute($num) || die $this->{DB}->errstr();
-    $statement->bind_columns(undef, \($note, $date)) || die $this->{DB}->errstr();
+    $statement->bind_columns(undef, \($note, $date, $topic)) || die $this->{DB}->errstr();
 
     while($statement->fetch) {
-	return $this->ude($note), $this->ude($date);
+      $note = $this->ude($note);
+      if ($topic) {
+	$note = "$topic\n" . $note;
+      }
+      return $note, $this->ude($date);
     }
 }
 
@@ -110,7 +115,7 @@ sub get_single {
 sub get_all
 {
     my $this = shift;
-    my($num, $note, $date, %res);
+    my($num, $note, $date, %res, $topic);
 
     if ($this->unchanged) {
 	return %{$this->{cache}};
@@ -119,11 +124,14 @@ sub get_all
     my $statement = $this->{DB}->prepare($this->{sql_all}) or die $this->{DB}->errstr();
 
     $statement->execute or die $this->{DB}->errstr();
-    $statement->bind_columns(undef, \($num, $note, $date)) or die $this->{DB}->errstr();
+    $statement->bind_columns(undef, \($num, $note, $date, $topic)) or die $this->{DB}->errstr();
 
     while($statement->fetch) {
 	$res{$num}->{'note'} = $this->ude($note);
 	$res{$num}->{'date'} = $this->ude($date);
+	if ($topic) {
+	  $res{$num}->{'note'} = "$topic\n" . $res{$num}->{'note'};
+	}
     }
 
     $this->cache(%res);
@@ -156,7 +164,7 @@ sub get_nextnum
 sub get_search
 {
     my($this, $searchstring) = @_;
-    my($num, $note, $date, %res, $match, $use_cache);
+    my($num, $note, $date, %res, $match, $use_cache, $topic);
 
     my $regex = $this->generate_search($searchstring);
     eval $regex;
@@ -182,11 +190,14 @@ sub get_search
     my $statement = $this->{DB}->prepare($this->{sql_all}) or die $this->{DB}->errstr();
 
     $statement->execute or die $this->{DB}->errstr();
-    $statement->bind_columns(undef, \($num, $note, $date)) or die $this->{DB}->errstr();
+    $statement->bind_columns(undef, \($num, $note, $date, $topic)) or die $this->{DB}->errstr();
 
     while($statement->fetch) {
 	$note = $this->ude($note);
 	$date = $this->ude($date);
+	if ($topic) {
+	  $note = "$topic\n" . $note;
+	}
 	$_ = $note;
 	eval $regex;
 	if($match) {
@@ -222,9 +233,12 @@ sub set_new
     $this->lock;
     my $statement = $this->{DB}->prepare($this->{sql_insertnew}) || die $this->{DB}->errstr();
 
+    my ($topic, $note) = $this->get_topic($note);
+
     $note =~ s/'/\'/g;
     $note =~ s/\\/\\\\/g;
-    $statement->execute($num, $this->uen($note), $this->uen($date)) || die $this->{DB}->errstr();
+    $topic =~ s/\\/\\\\/g;
+    $statement->execute($num, $this->uen($note), $this->uen($date), $topic) || die $this->{DB}->errstr();
     $this->unlock;
     $this->changed;
 }
@@ -291,7 +305,7 @@ sub import_data {
   my ($this, $data) = @_;
   foreach my $num (keys %{$data}) {
     my $pos = $this->get_nextnum();
-    $this->set_edit($pos, $data->{$num}->{note}, $data->{$num}->{date});
+    $this->set_new($pos, $data->{$num}->{note}, $data->{$num}->{date});
   }
 }
 
@@ -324,6 +338,17 @@ sub ude
     else {
 	return $_[0];
     }
+}
+
+sub get_topic {
+  my ($this, $data) = @_;
+  if ($data =~ /^\//) {
+    my($topic, $note) = split /\n/, $data, 2;
+    return ($topic, $note);
+  }
+  else {
+    return ("", $data);
+  }
 }
 
 1; # keep this!

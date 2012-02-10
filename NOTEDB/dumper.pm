@@ -2,14 +2,13 @@
 # text database backend. see docu: perldoc NOTEDB::text
 # using Storable as backend.
 
-package NOTEDB::text;
+package NOTEDB::dumper;
 
-$NOTEDB::text::VERSION = "1.03";
+$NOTEDB::text::VERSION = "1.00";
 
 use strict;
-#use Data::Dumper;
+use Data::Dumper;
 use File::Spec;
-use Storable qw(lock_nstore lock_retrieve);
 use MIME::Base64;
 
 use NOTEDB;
@@ -80,7 +79,6 @@ sub get_single {
     my($address, $note, $date, $buffer, $n, $t, $buffer, );
 
     my %data = $this->get_all();
-
     return ($data{$num}->{note}, $data{$num}->{date});
 }
 
@@ -94,7 +92,6 @@ sub get_all {
     }
 
     my %data = $this->_retrieve();
-
     foreach my $num (keys %data) {
 	$res{$num}->{note} = $this->ude($data{$num}->{note});
 	$res{$num}->{date} = $this->ude($data{$num}->{date});
@@ -121,22 +118,16 @@ sub get_nextnum {
     my($num, $te, $me, $buffer);
 
     if ($this->unchanged) {
-      my @numbers = sort { $a <=> $b } keys %{$this->{cache}};
-      $num = pop @numbers;
-      $num++;
-      #$num = 1;
-      #foreach (keys %{$this->{cache}}) {
-      #    $num++;
-      #}
-      return $num;
+	$num = 1;
+	foreach (keys %{$this->{cache}}) {
+	    $num++;
+	}
+	return $num;
     }
 
     my %data = $this->get_all();
-    my @numbers = sort { $a <=> $b } keys %data;
-    $num = pop @numbers;
-    $num++;
-    #my $size = scalar keys %data;
-    #$num = $size + 1;
+    my $size = scalar keys %data;
+    $num = $size + 1;
     return $num;
 }
 
@@ -225,7 +216,24 @@ sub set_del {
 }
 
 sub set_recountnums {
-    # not required here
+    my($this) = @_;
+    my(%orig, %data, $note, $date, $T, $setnum, $buffer, $n, $N, $t);
+
+    $setnum = 1;
+    %orig = $this->_retrieve();
+
+    foreach $N (sort {$a <=> $b} keys %orig) {
+      $data{$setnum} = {
+			note => $orig{$N}->{note},
+			date => $orig{$N}->{date}
+		       };
+	$setnum++;
+    }
+
+    $this->_store(\%data);
+
+    $this->changed;
+
     return;
 }
 
@@ -235,43 +243,48 @@ sub uen {
     if($NOTEDB::crypt_supported == 1) {
 	eval {
 	    $crypted = $this->{cipher}->encrypt($raw);
+	    return encode_base64($crypted);
 	};
     }
     else {
-	$crypted = $raw;
+	return $raw;
     }
-    my $coded = encode_base64($crypted);
-    return $coded;
 }
 
 sub ude {
     my ($this, $crypted) = @_;
     my($raw);
     if($NOTEDB::crypt_supported == 1) {
-	eval {
-	    $raw = $this->{cipher}->decrypt(decode_base64($crypted));
-	};
+      eval {
+	$raw = $this->{cipher}->decrypt(decode_base64($crypted));
+      };
+      return $raw;
     }
     else {
-	$raw = decode_base64($crypted)
+      return $crypted;
     }
-    return $raw;
 }
 
 
 sub _store {
   my ($this, $data) = @_;
-  lock_nstore($data, $this->{NOTEDB});
+  open N, ">$this->{NOTEDB}" or die "Could not open db: $!\n";
+  print N Data::Dumper->Dump([$data], [qw(*data)]);
+  close N;
 }
 
 sub _retrieve {
   my $this = shift;
   if (-s $this->{NOTEDB}) {
     if ($this->changed() || $this->{unread}) {
-      my $data = lock_retrieve($this->{NOTEDB});
+      open N, "<$this->{NOTEDB}" or die "Could not open db: $!\n";
+      my $content = join "", <N>;
+      close N;
+      my %data;
+      eval $content;  # creates %data
       $this->{unread} = 0;
-      $this->{data}   = $data;
-      return %{$data};
+      $this->{data}   = \%data;
+      return %data;
     }
   }
   else {
