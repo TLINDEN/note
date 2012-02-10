@@ -105,29 +105,28 @@ my (
 # don't change them, instead use the config file!
 #
 
-$conf{dbdriver}      = "binary";
-$conf{color}         = 1;
-$conf{border_color}  = "bold";
-$conf{num_color}     = "blue";
-$conf{note_color}    = "green";
-$conf{time_color}    = "blue";
-$conf{topic_color}   = "bold";
-$conf{topicsep}      = '/';
-$conf{use_crypt}     = 0;
-$conf{tempdirectory} = File::Spec->tmpdir();
-$conf{always_int}    = 1;
-$conf{always_edit}   = 1;
-$conf{auto_clear}    = 1;
+$conf{dbdriver}          = "binary";
+$conf{usecolors}         = 1;
+$conf{bordercolor}       = "bold";
+$conf{numbercolor}       = "blue";
+$conf{notecolor}         = "green";
+$conf{timecolor}         = "blue";
+$conf{topiccolor}        = "bold";
+$conf{topicseparator}    = '/';
+$conf{useencryption}     = 0;
+$conf{tempdirectory}     = File::Spec->tmpdir();
+$conf{alwaysinteractive} = 1;
+$conf{alwayseditor}      = 1;
+$conf{autoclear}         = 1;
 
 $CONF 		= File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
 $TOPIC 		= 1;
-$version 	= "1.3.0";
+$version 	= "1.3.1";
 $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 $maxlen         = "auto";
 $timelen        = 22;
-
 
 
 # colors available
@@ -214,11 +213,11 @@ else {
   elsif (defined $opt_l || defined $opt_L) {
     $mode = "list";
     if (defined $opt_l) {
-      @ArgTopics = split /$conf{topicsep}/, $opt_l;
+      @ArgTopics = split /$conf{topicseparator}/, $opt_l;
     }
     else {
       $ListType = "LONG";
-      @ArgTopics = split /$conf{topicsep}/, $opt_L;
+      @ArgTopics = split /$conf{topicseparator}/, $opt_L;
     }
     $CurDepth += $#ArgTopics + 1 if($opt_l || $opt_L);
     $CurTopic = $ArgTopics[$#ArgTopics];  # use the last element everytime...
@@ -344,12 +343,12 @@ if ($mode eq "encrypt_passwd") {
 }
 
 # Always interactive?
-if ($conf{always_int} && $mode ne "dump" && $mode ne "import") {
+if ($conf{alwaysinteractive} && $mode ne "dump" && $mode ne "import") {
   $mode = "interactive";
 }
 
 # OK ... Long-Listing shall be default ... You wanted it!!!
-if ($conf{default_list} eq "LONG") {
+if ($conf{defaultlong}) {
   # takes only precedence in commandline mode
   $ListType="LONG";
 }
@@ -358,18 +357,18 @@ if ($conf{default_list} eq "LONG") {
 
 
 # calculate some constants...
-$BORDERC  = "<$conf{border_color}>";
-$_BORDERC = "</$conf{border_color}>";
-$NUMC     = "<$conf{num_color}>";
-$_NUMC    = "</$conf{num_color}>";
-$NOTEC    = "<$conf{note_color}>";
-$_NOTEC   = "</$conf{note_color}>";
-$TIMEC    = "<$conf{time_color}>";
-$_TIMEC   = "</$conf{time_color}>";
-$TOPICC   = "<$conf{topic_color}>";
-$_TOPICC  = "</$conf{topic_color}>";
+$BORDERC  = "<$conf{bordercolor}>";
+$_BORDERC = "</$conf{bordercolor}>";
+$NUMC     = "<$conf{numbercolor}>";
+$_NUMC    = "</$conf{numbercolor}>";
+$NOTEC    = "<$conf{notecolor}>";
+$_NOTEC   = "</$conf{notecolor}>";
+$TIMEC    = "<$conf{timecolor}>";
+$_TIMEC   = "</$conf{timecolor}>";
+$TOPICC   = "<$conf{topiccolor}>";
+$_TOPICC  = "</$conf{topiccolor}>";
 
-$NoteKey  = $conf{topicsep} . "notes" . $conf{topicsep};
+$NoteKey  = $conf{topicseparator} . "notes" . $conf{topicseparator};
 
 
 
@@ -381,11 +380,10 @@ umask 077;
 # load the parent module
 &load_driver(1);
 
-
 # check wether the user wants to use encryption:
-if ($conf{use_crypt} && $NOTEDB::crypt_supported == 1) {
-  if ($conf{crypt_method} eq "") {
-    $conf{crypt_method} = "Crypt::IDEA";
+if ($conf{useencryption} && $NOTEDB::crypt_supported == 1) {
+  if ($conf{cryptmethod} eq "") {
+    $conf{cryptmethod} = "Crypt::IDEA";
   }
   if (!exists $ENV{'NOTE_PASSWD'}) {
     print "password: ";
@@ -410,7 +408,7 @@ if ($conf{use_crypt} && $NOTEDB::crypt_supported == 1) {
   if ($conf{dbdriver} eq "mysql") {
     eval {
       require Crypt::CBC;
-      my $cipher = new Crypt::CBC($key, $conf{crypt_method});
+      my $cipher = new Crypt::CBC($key, $conf{cryptmethod});
       # decrypt the dbpasswd, if it's encrypted!
       $driver{mysql}->{dbpasswd}  =
 	$cipher->decrypt(unpack("u", $driver{mysql}->{dbpasswd})) if($driver{mysql}->{encrypt_passwd});
@@ -421,7 +419,7 @@ if ($conf{use_crypt} && $NOTEDB::crypt_supported == 1) {
   else {
     &load_driver();
   }
-  $db->use_crypt($key,$conf{crypt_method});
+  $db->use_crypt($key,$conf{cryptmethod});
   undef $key;
   # verify correctness of passwd
   my ($cnote, $cdate) = $db->get_single(1);
@@ -448,7 +446,7 @@ else {
 
 
 # do we use the db cache?
-if ($conf{use_cache}) {
+if ($conf{cache}) {
     $db->use_cache();
 }
 
@@ -495,7 +493,7 @@ sub encrypt_passwd {
   chomp $key;
   eval {
     require Crypt::CBC;
-    my $cipher = new Crypt::CBC($key, $conf{crypt_method});
+    my $cipher = new Crypt::CBC($key, $conf{cryptmethod});
     $crypt_string  = pack("u", $cipher->encrypt($clearstring));
   };
   if ($@) {
@@ -584,8 +582,8 @@ sub list {
       if ($TOPIC) {
 	# this allows us to have multiple topics (subtopics!)
 	my ($firstline,$dummy) = split /\n/, $n, 2;
-	if ($firstline =~ /^($conf{topicsep})/) {
-	  @topic = split(/$conf{topicsep}/,$firstline);
+	if ($firstline =~ /^($conf{topicseparator})/) {
+	  @topic = split(/$conf{topicseparator}/,$firstline);
 	}
 	else {
 	  @topic = ();
@@ -603,7 +601,7 @@ sub list {
 	}
 	elsif ($topic[$CurDepth-1] eq $CurTopic || ($topic[$CurDepth] eq "" && $CurDepth ==1)) {
 	  # cut the topic off the note-text
-	  if ($n =~ /^($conf{topicsep})/) {
+	  if ($n =~ /^($conf{topicseparator})/) {
 	    $CurItem[$i]->{'note'} = $dummy;
 	  }
 	  else {
@@ -629,19 +627,19 @@ sub list {
 	  # only if there were notes under current topic
 	  undef $PATH;
 	  foreach (@RealTopic) {
-	    $PATH .= $_ . $conf{topicsep};
+	    $PATH .= $_ . $conf{topicseparator};
 	    last if($_ eq $CurTopic);
 	  }
 	}
 	else {
 	  # it is an empty topic, no notes here
-	  $PATH = join $conf{topicsep}, @LastTopic;
-	  $PATH .= $conf{topicsep} . $CurTopic . $conf{topicsep};
-	  $PATH =~ s/^\Q$conf{topicsep}$conf{topicsep}\E/$conf{topicsep}/;
+	  $PATH = join $conf{topicseparator}, @LastTopic;
+	  $PATH .= $conf{topicseparator} . $CurTopic . $conf{topicseparator};
+	  $PATH =~ s/^\Q$conf{topicseparator}$conf{topicseparator}\E/$conf{topicseparator}/;
 	}
       }
       else {
-	$PATH = $conf{topicsep};
+	$PATH = $conf{topicseparator};
       }
 
       @completion_topics = ();
@@ -649,7 +647,7 @@ sub list {
       # we are at top level, print a list of topics...
       foreach $top (sort(keys %TP)) {
 	push @completion_topics, $top;
-	output("-", " => ". $top . "$conf{topicsep} ($TP{$top} notes)",
+	output("-", " => ". $top . "$conf{topicseparator} ($TP{$top} notes)",
 	       " Sub Topic         ");
       }
       #print Dumper(@CurItem);
@@ -673,7 +671,7 @@ sub new {
     }
     $date = &getdate;
     return if $db->lock();
-    if ($conf{always_edit}) {
+    if ($conf{alwayseditor}) {
       $TEMP = &gettemp;
       # security!
       unlink $TEMP;
@@ -740,7 +738,7 @@ sub new {
     # since we have not a number, look for the next one available:
     $number = $db->get_nextnum();
     if ($TOPIC && $CurTopic ne "") {
-      @topic = split(/$conf{topicsep}/,$note);
+      @topic = split(/$conf{topicseparator}/,$note);
       if ($topic[1] eq "") {
 	$note = $PATH . "\n$note";
       }
@@ -837,7 +835,7 @@ sub edit {
     unlink $TEMP || die $!;
 
     if ($note ne $backup) {
-      if ($conf{keep_timestamp}) {
+      if ($conf{keeptimestamp}) {
 	$t = $keeptime;
       }
       else {
@@ -957,7 +955,7 @@ sub determine_width {
 
 sub clear {
   # first, try to determine the terminal height
-  return if(!$conf{auto_clear});
+  return if(!$conf{autoclear});
   my $hoch;
   eval {
     my $height = `stty -a`;
@@ -997,7 +995,7 @@ sub interactive {
     # per default let's list all the stuff:
     # Initially do a list command!
     &determine_width;
-    $ListType = ($conf{default_list} eq "LONG") ? "LONG" : "";
+    $ListType = ($conf{defaultlong}) ? "LONG" : "";
     &list;
 
     my ($term, $prompt, $attribs);
@@ -1009,7 +1007,7 @@ sub interactive {
     }
 
     for (;;) {
-      $ListType = ($conf{default_list} eq "LONG") ? "LONG" : "";
+      $ListType = ($conf{defaultlong}) ? "LONG" : "";
       undef $SetTitle;
       if ($CurDepth > 2) {
 	print C $menu . $TOPICC . "../" . $CurTopic . $_TOPICC . ">";
@@ -1153,8 +1151,8 @@ sub interactive {
 	  my @topic;
 	  my ($cnote, $cdate) = $db->get_single($unchar);
 	  my ($firstline,$dummy) = split /\n/, $cnote, 2;
-	  if ($firstline =~ /^($conf{topicsep})/) {
-	    @topic = split(/$conf{topicsep}/,$firstline);
+	  if ($firstline =~ /^($conf{topicseparator})/) {
+	    @topic = split(/$conf{topicseparator}/,$firstline);
 	  }
 	  else {
 	    @topic = ();
@@ -1168,7 +1166,7 @@ sub interactive {
 	  }
 	  &list;
 	}
-	elsif ($unchar eq $conf{topicsep}) {
+	elsif ($unchar eq $conf{topicseparator}) {
 	  # cd /
 	  $CurDepth = 1;
 	  $CurTopic = "";
@@ -1307,7 +1305,7 @@ sub output {
       $title = "";
       $CUTSPACE = " " x $txtlen;
       if ($TYPE eq "search") {
-	$note =~ s/^\Q$conf{topicsep}\E.+?\Q$conf{topicsep}\E\n//;
+	$note =~ s/^\Q$conf{topicseparator}\E.+?\Q$conf{topicseparator}\E\n//;
       }
       $note =~ s/\n/$CUTSPACE/g;
       $len   = length($note);
@@ -1336,8 +1334,8 @@ sub output {
       if ($Raw) {
 	print "$num  ";
 	print "$time  " if($ListType eq "LONG");
-	if ($title =~ /^ => (.*)$conf{topicsep} (.*)$/) {
-	  $title = "$1$conf{topicsep} $2"; # seems to be a topic!
+	if ($title =~ /^ => (.*)$conf{topicseparator} (.*)$/) {
+	  $title = "$1$conf{topicseparator} $2"; # seems to be a topic!
 	}
 	print "$title\n";
       }
@@ -1371,7 +1369,7 @@ sub C {
     $S = $_[0];
     foreach $Col (%Color) {
       if ($S =~ /<$Col>/g) {
-	if ($conf{color}) {
+	if ($conf{usecolors}) {
 	  $NC = "\033[" . $Color{$Col} . "m";
 	  $S =~ s/<$Col>/$NC/g;
 	  $S =~ s/<\/$Col>/$default/g;
@@ -1434,8 +1432,8 @@ sub getdate {
     $min  =~ s/^(\d)$/0$1/;
     $sec  =~ s/^(\d)$/0$1/;
     $mday =~ s/^(\d)$/0$1/;
-    if ($conf{time_format}) {
-      my $back = $conf{time_format};
+    if ($conf{timeformat}) {
+      my $back = $conf{timeformat};
       $back =~ s/YYYY/$year/;
       $back =~ s/YY/substr($year, 1, 2)/e;
       $back =~ s/MM/$mon/;
@@ -1520,19 +1518,19 @@ sub display_tree {
     $t = $res{$num}->{'date'};
     # this allows us to have multiple topics (subtopics!)
     my ($firstline,$text,$untext) = split /\n/, $n, 3;
-    if ($firstline =~ /^($conf{topicsep})/) {
-      $firstline =~ s/($conf{topicsep})*$//; #remove TopicSepatator
-      @nodes = split(/$conf{topicsep}/,$firstline);
+    if ($firstline =~ /^($conf{topicseparator})/) {
+      $firstline =~ s/($conf{topicseparator})*$//; #remove Topicseparator
+      @nodes = split(/$conf{topicseparator}/,$firstline);
     }
     else {
-      @nodes = (); #("$conf{topicsep}");
+      @nodes = (); #("$conf{topicseparator}");
       $text = $firstline;
     }
     &tree($num, $text, \%TREE, @nodes);
   }
   #return if ($num == 0);
   # now that we have build our tree (in %TREE) go on t display it:
-  print C $BORDERC . "\n[" . $conf{topicsep} . $BORDERC . "]\n";
+  print C $BORDERC . "\n[" . $conf{topicseparator} . $BORDERC . "]\n";
   &print_tree(\%{$TREE{''}},"") if(%TREE);
   print C $BORDERC . $_BORDERC . "\n";
 }
@@ -1646,6 +1644,7 @@ sub load_driver {
 
   if ($parent) {
     my $pkg = "NOTEDB";
+    eval "use $pkg;";
     if ($@) {
       die "Could not load the NOTEDB module: $@\n";
     }

@@ -1,4 +1,15 @@
-1.2.7:
+1.3.1:
+FIXED:          most config variables not related to drivers had
+	 	invalid sentence in note, so the new ones of the new config
+		were ignored.
+FIXED:		added version to NOTEDB::text.
+FIXED:		fixed handling of NOTEDB::crypt_supported, now encryption
+		works again.
+ADDED:		NOTEDB::text now supports internal caching too.
+CHANGED:        lock() sets the umask internally to 022, so that other
+		users are able to read the lockfile.
+================================================================================
+1.3.0:
 ADDED:          new config option: ReadOnly
 ADDED:          new database backend: NOTEDB::text, which uses the Storable
 		module.

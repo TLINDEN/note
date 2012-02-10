@@ -4,6 +4,8 @@
 
 package NOTEDB::text;
 
+$NOTEDB::text::VERSION = "1.01";
+
 use strict;
 #use Data::Dumper;
 use File::Spec;
@@ -40,6 +42,9 @@ sub new {
     }
 
     $self->{LOCKFILE} = $param{dbname} . "~LOCK";
+    $self->{mtime}    = $self->get_stat();
+    $self->{unread}   = 1;
+    $self->{data}     = {};
 
     return $self;
 }
@@ -52,9 +57,14 @@ sub DESTROY
 
 sub version {
     my $this = shift;
-    return $this->{version};
+    return $NOTEDB::text::VERSION;
 }
 
+sub get_stat {
+  my ($this) = @_;
+  my $mtime = (stat($this->{dbname}))[9];
+  return $mtime;
+}
 
 
 sub set_del_all {
@@ -268,8 +278,12 @@ sub _store {
 sub _retrieve {
   my $this = shift;
   if (-s $this->{NOTEDB}) {
-    my $data = lock_retrieve($this->{NOTEDB});
-    return %{$data};
+    if ($this->changed() || $this->{unread}) {
+      my $data = lock_retrieve($this->{NOTEDB});
+      $this->{unread} = 0;
+      $this->{data}   = $data;
+      return %{$data};
+    }
   }
   else {
     return ();

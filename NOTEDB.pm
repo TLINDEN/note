@@ -7,7 +7,10 @@
 
 package NOTEDB;
 
-$NOTEDB::VERSION = "1.3";
+use Exporter ();
+use vars qw(@ISA @EXPORT $crypt_supported);
+
+$NOTEDB::VERSION = "1.31";
 
 BEGIN {
     # make sure, it works, otherwise encryption
@@ -35,7 +38,8 @@ sub use_crypt {
 	    $cipher = new Crypt::CBC($key, $method);
 	};
 	if($@) {
-	    $NOTEDB::crypt_supported == 0;
+	  print "warning: Crypt::$method not supported by system!\n";
+	  $NOTEDB::crypt_supported = 0;
 	}
 	else {
 	    $this->{cipher} = $cipher;
@@ -261,6 +265,7 @@ sub lock {
     alarm $timeout - 2;
     while (1) {
       if (! -e $this->{LOCKFILE}) {
+	umask 022;
 	open LOCK, ">$this->{LOCKFILE}" or die "could not open $this->{LOCKFILE}: $!\n";
 	flock LOCK, LOCK_EX;
 
@@ -282,6 +287,7 @@ sub lock {
       print " interrupted\n";
     }
     else {
+      print $@;
       print " timeout\n";
     }
     return 1;

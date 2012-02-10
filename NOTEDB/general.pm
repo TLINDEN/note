@@ -4,7 +4,7 @@
 
 package NOTEDB::general;
 
-$NOTEDB::general::VERSION = "1.00";
+$NOTEDB::general::VERSION = "1.01";
 
 use strict;
 #use Data::Dumper;
@@ -258,6 +258,7 @@ sub uen {
 	eval {
 	    $crypted = $this->{cipher}->encrypt($raw);
 	};
+	print $@;
     }
     else {
 	$crypted = $raw;
@@ -287,8 +288,13 @@ sub _store {
   open NOTE, ">$this->{dbname}" or die "could not open $this->{dbname}: $!\n";
   flock NOTE, LOCK_EX;
 
-  my $content = SaveConfigString($data) or die "could not serialize data: $!\n";
-  print NOTE $content;
+  if (%{$data}) {
+    my $content = SaveConfigString($data) or die "could not serialize data: $!\n";
+    print NOTE $content;
+  }
+  else {
+    print NOTE "";
+  }
 
   flock NOTE, LOCK_UN;
   close NOTE;

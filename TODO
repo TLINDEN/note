@@ -3,10 +3,4 @@
 
 - ncurses support
 
-- readline/editline support for interactive prompt
-  with: completion and history
-
-- LOCKing support, so that multiple people can use
-  note simultaneously while not interfering with
-  each other
   

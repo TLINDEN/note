@@ -475,7 +475,7 @@ to encryption, I suggest you to follow the directions in the
 file UPGRADE!
 
 You can choose from different encryption algorythms. The default
-is IDEA, but DES or BLOWFISH is also possible. You need to have
+is IDEA, but DES or BLOWFISH are also possible. You need to have
 installed the following additional perl-modules on your system:
 MD5
 Crypt::IDEA
@@ -523,6 +523,6 @@ Thomas Linden <tom@daemon.de>
 
 =head1 VERSION
 
-1.3.0 (11/01/2005)
+1.3.1 (12/01/2005)
 
 =cut
