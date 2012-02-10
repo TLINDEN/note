@@ -1,34 +1,65 @@
-# 0.7
+# 0.8
 # This is a sample config for the note script
-# You do not need it, if you keep the values
-# here unchanged.
+# There are usefully defaults set in note itself.
+# 
+# The default database backend is NOTEDB::binary.
 #
 # Copy it to your $HOME as .noterc
 # 
-# IMPORTANT:
-# If you previously used note 0.1 or 0.2 then
-# you will already have such a file. This file
-# is not compatible with the one for note 0.3 and higher!
-# You have to delete it and to create a new one.
-# 
 # This config has to be valid perl code. Therefore
-# please be carefull!
+# please be careful!
 #
 # You can contact me per email: <tom@daemon.de>
 # 
-# Thomas Linden, 23/2000
+# Thomas Linden, 19/03/2000
 
 
-# mysql database settings. leave them uncommented
-# if you are not using the mysql version of note.
-# $dbhost = "";		# mysql server (hostname)
-# $dbuser = "";		# mysql username
-# $dbpasswd = "";	# her password
-# $dbname = "";		# database name
-# $table  = "note";	# Table and field names.
-# $fnum   = "number";
-# $fnote  = "note";
-# $fdate  = "date";
+# Your home, better do not change it!
+$HOME = $ENV{'HOME'};
+
+
+# specify the path, where the NOTEDB directory
+# resides
+$libpath = "/usr/local/lib";
+
+
+
+# you need to decide which database backend you want
+# to use. Please refer to the corresponding documentation
+# for closer information about the certain backend!
+# Currently supported types: "binary" or "mysql".
+$dbdriver = "binary";
+
+
+# backend specific settings: 
+####### mysql ###############
+# sql database settings. 
+$dbhost = "";		# mysql server (hostname)
+$dbuser = "";		# mysql username
+$dbpasswd = "";		# her password
+$dbname = "";		# database name
+$table  = "note";	# Table and field names.
+$fnum   = "number";
+$fnote  = "note";
+$fdate  = "date";
+######## end mysql ###########
+
+
+####### binary db ##################
+# The location of the note-database. If it does
+# not exist, it will be created. Only if $driver = "binary"
+$NOTEDB = $HOME . "/.notedb";
+# Define the maximum bytes a note can have in a
+# note-entry.
+$MAX_NOTE = 4096;
+
+# Define the maximum bytes a timestamp can have
+# in a note-entry.
+$MAX_TIME = 24;
+####### end binary #################
+
+
+
 
 # uncomment this, if you want to run note always
 # in interactive mode
@@ -62,40 +93,20 @@ $TOPIC = 1;
 #$TopicSep = '/';
 
 
-# Define the maximum bytes a note can have in a
-# note-entry.
-$MAX_NOTE = 1024;
-
-
-# Define the maximum bytes a timestamp can have
-# in a note-entry.
-$MAX_TIME = 64;
-
-
 # The maximum width for displaying a note.
 $maxlen = 30;
 
 
-# Your home, better do not change it!
-$HOME = `echo \$HOME`;
-chomp $HOME;
-
-
-# The location of the note-database. If it does
-# not exist, it will be created.
-$NOTEDB = $HOME . "/.notedb";
-
-
 # if $COLOR equals NO, then everything will be
 # displayed with your default colors (mostly black)
-$COLOR = "NO";
+$COLOR = "YES";
 
 
 # Color-definitions of the various fields. Will be
 # ignored if $COLOR = "NO".
 $BORDER_COLOR = "BLACK";	# Borders
 $NUM_COLOR    = "blue";		# Note number
-$NOTE_COLOR   = "magenta";	# The note itself
+$NOTE_COLOR   = "green";	# The note itself
 $TIME_COLOR   = "black";	# The time
 $TOPIC_COLOR  = "BLACK";	# The topic "prompt"
 

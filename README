@@ -1,4 +1,4 @@
-note 0.7 by Thomas Linden, 08/03/2000
+note 0.8 by Thomas Linden, 19/03/2000
 
 
 Introduction
@@ -17,20 +17,15 @@ Introduction
 	sort your notes in different topics, which is usefull
 	if you have a lot of them.
 
-	There are now two version of note in one package:
-		o (binary) the binary version resists in the
-		  subdirectory "binary-db". 
-		  It uses a binary file for data storage.
-		  The format of this file will be described
-		  later on. 
-		o (mysql) the mysql version resists in the
-		  subdirectory mysql-db. It uses a mysql
-		  database as backend. There are some
-		  special installation steps required in 
-		  order to run the mysql version which are 
-		  documented in the README within this
-		  subdirectory.
-
+	There are currently two different database backends,
+	which you can use with note:
+		o NOTEDB::binary - this is the default backend
+		  and uses a binary file to store your notes.
+		o NOTEDB::mysql  - this backend uses a mysql
+		  database to store your notes. You can switch
+		  easily to another DBMS since this module uses
+		  the Perl standard module "DBI" for database-
+		  access. See below for more info on this topic!
 
 
 Requirements
@@ -38,20 +33,22 @@ Requirements
 
 	You need the following things:
 		o perl installed (5.004x)
-		o The module IO::Seekable, which should be 
+		o The module IO::Seekable and Fcntl, which should be 
 		  already installed with your perl distributuion.
-		o Mysql.pm if you want to use the mysql version.
+		o DBI module and DBI::mysql if you want to use the 
+		  mysql version.
 
 
 
 Installation
 ============
 
-	Simple: Copy it to a place inside your $PATH, 
-	probably as root. (for example to /usr/bin).
+	There is a script provided called "install.sh", which will
+	ask you a few questions about file destinations and database
+	backends. Simply answer this questions and it does the rest.
 
-	For installation instructions for the mysql version see
-	mysql-db/README.
+	For installation instructions for the mysql database installation
+	see mysql/README.
 
 
 
@@ -65,20 +62,19 @@ Configuration
 	about every available parameter.
 	Simply copy this file into your home-directory and name it
 	.noterc
+	If you decide not to use the default database backend (a binary
+	file), you will *need* a configuration!
 
 
 
 Usage
 =====
-	Usage of the mysql and binary version is similar, there
-	are only differences between the database backends of
-	each other.
 
 	If you don't know, how to run note, try "note -h" first. 
 	It will tell you all available commandline options.
 
 	To create a new note, simply run "note". You can enter
-	the note (the length is by default limited to 1024 bytes,
+	the note (the length is by default limited to 4096 bytes,
 	which you can change from your config file).
 	End by typing a . on a line itself. note will tell you the 
 	number of the note.
@@ -121,8 +117,8 @@ Usage
 	provides you the most functions of note.
 
 	You can also dump the contents of your note-database into a 
-	ASCII-textfile. You can use this file later to import it into
-	your note-database. This is usefull, if you want quickly trans-
+	ASCII-textfile(-D). You can use this file later to import it into
+	your note-database(-I). This is usefull, if you want quickly trans-
 	fer your notes from one host to another (i.e. you could mail
 	your note-dump form your office to home and import it there
 	for further use).
@@ -141,12 +137,16 @@ Topics
 	(or whatever you prefer, set $TopicSep in your config! default is slash), 
 	then note will consider it as the topic of this certain note. For examle:
 	/TodoList/
+	If you are using topics, no data after the topic is allowed, if there	
+	is any text, note will consider it as a subtopic! Therefore, don't for-
+	get to put a newline after the topic-line.
 	
 	If you are in interactive mode, you can "cd" to a different note simply
-	by typing it's name at the command-prompt. The list-command will only
-	show you notes under this topic. If you create a new note, it will auto-
-	magically inserted under the current topic (note will prepend  the string
-	"/topicname/" to the text of your note).
+	by typing it's name at the command-prompt, or you can use the well-known
+	syntax "cd topic". 
+	The list-command will only show you notes under this topic. If you create
+	a new note, it will automagically inserted under the current topic (note
+	will prepend  the string "/topicname/" to the text of your note).
 	
 	You can create at any time from any point a new topic. Just create a new
 	note and type the name of the new topic bordered by slashes (or $TopicSep)
@@ -197,7 +197,7 @@ Topics
 
 
 
-Format of the notedb (binary version)
+Format of the notedb (binary backend)
 =====================================
 
 	The database where the notes are stored is a binary file of
@@ -217,7 +217,7 @@ Format of the notedb (binary version)
 
 
 
-The note-database (mysql version)
+The note-database (mysql backend)
 =================================
 	
 	The sql-database for the mysql version has the following design:
@@ -324,10 +324,11 @@ License
 
 
 
-Author
-======
+Author and Copyright
+====================
 
 	The author is Thomas Linden.
+	note is Copyright of Thomas Linden.
 
 
 
@@ -335,4 +336,4 @@ Author
 Last changed
 ============
 
-	21.02.2000	
+	19/03/2000	

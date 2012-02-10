@@ -1,5 +1,28 @@
 ==================================================================================
 
+0.8:
+ADDED:		NOTEDB::binary. so now 0.8 is ready for shipping !
+FIXED: 		regexp bug fixed. It was only possible to delete 2 items together
+		separated by comma ("d 1,2,3,4" deleted only 1,2!).
+ADDED:		Some new config options which reflects the new module structure.
+		So you can change your database backend without the need to
+		replace the note script itself.
+FIXED:		the previously added feature "cd <topic>" didn't really work :-(
+ADDED:		NOTEDB::mysql added. Perlmodule, which I will use within 
+		note from now on instead of buildin functions for accessing the
+		database. From now on I only need to maintain one version of
+		note, since the module interface will be identical between the
+		bin and sql version.
+CHANGED:	The SQL code does not use Mysql.pm anymore. Instead it is coded
+		using the more portable DBI module. This allows one easily to 
+		switch to anther database, which is supported by DBI.
+CHANGED:	Locking. The db-table will now be locked before note accesses it.
+FIXED:		width of listings is now always the same independent of the string-
+		length of a certain note.
+
+
+==================================================================================
+
 0.7:
 ADDED:		one can now use the unix-like "cd" command to change to another 
 		topic, thus use "cd topicname" instead just typing "topicname"!
