@@ -1,3 +1,10 @@
+1.3.6:
+ADDED:          Added test cases for "make test"
+ADDED:		Added test for optional and required perl modules in
+		Makefile.PL
+FIXED:		NOTEDB::dumper version string were wrong, therefore
+		cpan didn't index is properly.
+================================================================================
 1.3.5:
 FIXED:		Applied patch by Elmar Loos which fixes misbehavior for
 		-t and -T (identical output)

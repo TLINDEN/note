@@ -8,9 +8,9 @@ package NOTEDB::binary;
 $NOTEDB::binary::VERSION = "1.10";
 
 use strict;
-#use Data::Dumper;
 use IO::Seekable;
 use File::Spec;
+use FileHandle;
 use Fcntl qw(LOCK_EX LOCK_UN);
 
 use NOTEDB;
@@ -77,7 +77,7 @@ sub set_del_all
 
 sub get_single {
     my($this, $num) = @_;
-    my($address, $note, $date, $buffer, $n, $t, $buffer, );
+    my($address, $note, $date, $n, $t, $buffer, );
 
     open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
     flock NOTE, LOCK_EX; 

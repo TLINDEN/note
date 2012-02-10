@@ -4,7 +4,7 @@
 
 package NOTEDB::dumper;
 
-$NOTEDB::text::VERSION = "1.00";
+$NOTEDB::dumper::VERSION = "1.01";
 
 use strict;
 use Data::Dumper;
