@@ -1,164 +1,176 @@
-# note 1.2.6        -*- sh -*- 
-#
-# This is a sample config for the note script
-# There are useful defaults set in note itself.
-# 
-# Copy it to your $HOME as .noterc
-#
-# note is Copyright (c) 1999-2004 Thomas Linden. 
-# You can contact me per email: <tom@daemon.de>
-#
-# comments start with #, empty lines will be ignored.
-# 1 turns an option on, 0 turns it off.
-# An option consists of an atribute-value pair separated
-# by minimum one space (more spaces and/or tabs are allowed)
+  # note 1.3.0        -*- sh -*- 
+  #
+  # This is a sample config for the note script
+  # There are useful defaults set in note itself.
+  # 
+  # Copy it to your $HOME as .noterc
+  #
+  # note is Copyright (c) 1999-2004 Thomas Linden. 
+  # You can contact me per email: <tom@daemon.de>
+  #
+  # Comments start with #, empty lines will be ignored.
+  #
+  # To turn on an option, set it to: 1, on or yes
+  # To turn off an option, set it to: 0, off or no
+  #
+  # An option consists of an atribute-value pair separated
+  # by minimum one space (more spaces and/or tabs are allowed)
+  # and an optional equal sign in between.
+  #
+  # Variable names are case in-sensitive.
+  #
+  # Refer to the manpage to learn more about the config
+
+  
 
 
-# specify the path, where the NOTEDB lib directory
-# resides. This will only used if it is not
-# installed inside the perl-lib directory structure!
-#LibPath			/usr/local/lib
-
-
-# you need to decide which database backend you want
-# to use. Please refer to the corresponding documentation
-# for closer information about the certain backend!
-# Currently supported types: "binary", "dbm" or "mysql".
-# You must also edit/uncomment one section below for the
-# backend you want to use!
-DbDriver		binary
-
-
-
-#
-# backend specific settings for sql backend
-#
-#DbHost			localhost
-#DbPort
-#DbUser			you
-#DbPasswd
-#DbName			mynotes
-#DbTable		note
-#FieldNumber		number
-#FieldNote		note
-#FieldDate		date
-# uncomment for using an encrypted password, generate it
-# with note "--encrypt"
-#encrypt_passwd		1
-#### specific end ###
+  #
+  # you need to decide which database backend you want
+  # to use. Please refer to the corresponding documentation
+  # for closer information about the certain backend!
+  # Currently supported types: "binary", "dbm", "mysql",
+  # "general" or "text".
+  # You must also edit/uncomment one section below for the
+  # backend you want to use!
+dbdriver = binary
 
 
 
-
-#
-# backend specific settings for binary(default) backend
-#
-# where to store the database (filename)
-NoteDb			~/.notedb
-#
-# Define the maximum bytes fields can have in a
-# note-entry. Do not change MaxTimeByte to less than 64!
-MaxNoteByte		4096
-MaxTimeByte		64
-#### specific end ###
-
-
-# backend specific settings for DBM backend
-#
-# Directory where to store the dbm files
-#DbName			/home/you/.notedbm
-#### specific end ###
+  #
+  # BINARY backend (the default)
+binary::dbname       = ~/.notedb     # filename
+binary::MaxNoteByte  = 4096          # max bytes per note entry
+binary::MaxTimeByte  = 64            # max bytes for the date
 
 
 
-# You can use encryption with note, that means notes and
-# timestamps will be stored encrypted. This is supported
-# by every db-backend.
-# Set to 1 to turn it on. The Default is 0 (off)
-UseEncryption		0
+  #
+  # MYSQL backend
+mysql::dbhost          = localhost   # hostname
+mysql::dbport          = 3306        # tcp port
+mysql::dbuser          = you         # db login
+mysql::dbpasswd        =             # db password
+mysql::dbname          =             # database name (default: note)
+mysql::encrypt_passwd  = 0           # mysql::dbpasswd is
+                                     # encrypted (note --encrypt)
+
+
+  #
+  # DBM backend
+dbm::directory = ~/.notedbm          # directory
 
 
 
-# Specify the encryption protocol. The appropriate perl
-# module needs to be installed. Possible velues are
-# IDEA, DES or Blowfish, the default is IDEA.
-CryptMethod		IDEA
+  #
+  # GENERAL backend
+general::dbname = ~/.notedb          # filename
+
+
+    #
+  # TEXT backend
+text::dbname = ~/.notedb             # filename
 
 
 
-# You can run note always in interactive mode by simply
-# typing "note". Set this option to 1 to turn it on.
-# The default is 1 (on).
-AlwaysInteractive	1
+  #
+  # You can use encryption with note, that means notes and
+  # timestamps will be stored encrypted. This is supported
+  # by every db-backend.
+UseEncryption = NO
+
+
+  
+  #
+  # Specify the encryption protocol. The appropriate perl
+  # module needs to be installed. Possible velues are
+  # IDEA, DES or Blowfish, the default is IDEA.
+CryptMethod  = IDEA
+
+
+  
+  #
+  # You can run note always in interactive mode by simply
+  # typing "note". The default is: YES.
+AlwaysInteractive = YES
 
 
 
-# In interactive mode, note issues a list command if you 
-# simply hit enter. By turning this on, it will issue a
-# longlist command instead if you hit just enter. 
-# The default is 0 (off)
-DefaultLong		0
+  #
+  # In interactive mode, note issues a list command if you 
+  # simply hit enter. By turning this on, it will issue a
+  # longlist command instead if you hit just enter. 
+  # The default is: NO
+DefaultLong = NO
 
 
 
-# You can use an external editor everytime from note instead
-# of STDIN for creating new notes. Set to 1 to turn it on.
-# The default is 0 (off).
-AlwaysEditor		0
+  #
+  # You can use an external editor everytime from note instead
+  # of STDIN for creating new notes. The default is: NO
+AlwaysEditor = NO
 
 
 
-# uncomment and edit it, if you want to use another
-# editor than the default $EDITOR or as fallback vi.
-#PreferredEditor 	emacs
+  #
+  # By default, note looks in the environment for a variable
+  # $EDITOR or, if this is not the case, for $VISUAL and as
+  # fallback it uses 'vi'.
+  # You can override this by setting this variable here.
+PreferredEditor = 
 
 
 
-# If you dont prefer that note updates the timestamp of a
-# note after editing, turn this on. It will
-# keep the original timestamp if this option is set.
-# The default is 0(off), to turn it on set to 1.
-KeepTimeStamp		0
+  #
+  # If you don't prefer that note updates the timestamp of a
+  # note after editing, turn this on. It will
+  # keep the original timestamp if this option is set.
+  # The default is: NO
+KeepTimeStamp = NO
 
 
 
-# You can specify your own topic separator here.
-# the default topic separator is a normal slash: "/"
-# see README for details about topics!
-TopicSeparator		/
+  #
+  # You can specify your own topic separator here.
+  # The default topic separator is a normal slash: "/"
+TopicSeparator = /
 
 
 
-# The maximum width for displaying a note, in CHARS.
-# Depends on your screen-size. You can set it to 
-# "auto", if you wish that note should determine the
-# available size.
-MaxLen			auto
+  #
+  # The maximum width for displaying a note, in CHARS.
+  # Depends on your screen-size. You can set it to 
+  # "auto", if you wish that note should determine the
+  # available size automatically.
+MaxLen = auto
 
 
 
-# Set this to 0 if you dont want note to automatically
-# clear the screen after displaying something and after
-# exit (feature introduced in 1.2.1).
-AutoClear               1
+  #
+  # Turn this off if you dont want note to automatically
+  # clear the screen after displaying something and after
+  # exit. The default is: YES
+AutoClear = YES
 
 
 
-# note can use colors for output, set this option to
-# 1, if you don't want it, or if your terminal does
-# not support it, set to 0. The default is 1 (on).
-UseColors		1
+  #
+  # note can use colors for output, turn this of, if
+  # you don't like it, or if your terminal does
+  # not support it. The default is: YES
+UseColors = YES
 
 
 
-# Color-definitions of the various items. Will only 
-# take effect, if "UseColors" is turned on!
-#
-# The following colors are available:
-# black, red, green, yellow, blue, magenta, cyan and white.  
-# for bold color write it uppercase (BLACK will be bold black)
-# for underlined color append an underscore (blue_ will be underlined blue)
-# for inverted color append an "I" (greenI will be inverted green)
+  #
+  # Color-definitions of the various items. Will only 
+  # take effect, if "UseColors" is turned on!
+  #
+  # The following colors are available:
+  # black, red, green, yellow, blue, magenta, cyan and white.  
+  #
+  # For bold color write it uppercase (BLACK will be bold black).
+  # For underlined color append an underscore (blue_ will be underlined blue).
+  # For inverted color append an "I" (greenI will be inverted green).
 BorderColor		BLACK
 NumberColor		blue
 NoteColor		green
@@ -166,52 +178,65 @@ TimeColor		black
 TopicColor		BLACK
 
 
-
-# Additional to colors, you can also do a little bit of formatting your
-# notes (bold, underlined, italic), see README!
-# You need to set this Option to 1, if you decide to make use of this
-# capabily. You can also set it to 'simple' to achieve a simplified syntax.
-FormatText		1
-
-
-
-# You might specify your own directory for temporary files.
-# note needs to create some temp files during editing of notes.
-# You could protect this directory using the command: chmod 700 directory.
-# The default is /tmp
-TempDirectory		/home/you/tmp
+  
+  #
+  # Additional to colors, you can also do a little bit of formatting your
+  # notes (bold, underlined, italic) text. The default is: YES.
+FormatText = YES
 
 
 
-# You can jump to a topic by typing "cd 13" in interactive mode.
-# You need to set thi soption to 1 if you want to use this feature.
-ShortCd			0
+  #
+  # You might specify your own directory for temporary files.
+  # note needs to create some temp files during editing of notes.
+  # You could protect this directory using the command: chmod 700 directory.
+  # The default is: /tmp
+TempDirectory = ~/tmp
 
 
 
-# note can use a cached copy of the note database for list/tree/search
-# this is currently only supported by the binary and the mysql backends
-# set it to 1 to turn it on, the default is 0 (off)
-Cache			0
+  #
+  # You can jump to a topic by typing "cd 13" in interactive mode.
+  # The deault is: NO
+ShortCd = NO
 
 
 
-# you can define your very own time format for time stamps
-# YY   - the last 2 digits of a year
-# YYYY - year
-# MM   - month
-# DD   - day
-# hh   - hours
-# mm   - minutes
-# ss   - seconds
-# This is the default: (18.10.2000 21:32:08)
-TimeFormat             DD.MM.YYYY hh:mm:ss 
+  #
+  # note can use a cached copy of the note database for list/tree/search
+  # this is currently only supported by the binary and the mysql backends,
+  # the general and text backends have an internal cache.
+  # The default is: NO
+Cache = NO
+
+
+
+  #
+  # You can define your very own time format for time stamps
+  # YY   - the last 2 digits of a year
+  # YYYY - year
+  # MM   - month
+  # DD   - day
+  # hh   - hours
+  # mm   - minutes
+  # ss   - seconds
+  # This is the default: (18.10.2000 21:32:08)
+TimeFormat = DD.MM.YYYY hh:mm:ss 
+
+
+
+  #
+  # You can make note readonly which is useful for database copies
+  # The default is: NO
+ReadOnly = NO
 
 
 
 
-
-
-# That's all about it for now.
-# If you still have any questiosn, please feel free to contact
-# me by email: Thomas Linden <tom@daemon.de>
+  #
+  #
+  # That's all about it for now.
+  # If you still have any questiosn, please feel free to contact
+  # me by email: Thomas Linden <tom@daemon.de>
+  #
+  #

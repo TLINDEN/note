@@ -1,3 +1,5 @@
+# -*-perl-*-
+
 =head1 NAME
 
 note - a perl script for maintaining notes.
@@ -16,6 +18,7 @@ the commandline. Note can use different database-backends for
 notes-storage. It ships with a DBI-based mysql-module(which 
 can also be used for other by DBI supported DBMS), another 
 module, which uses a binary file for storage and a DBM module.
+There are also two modules available which uses a text file.
 Note supports since version 1.0.0 encryption(IDEA or DES)!
 
 
@@ -495,9 +498,16 @@ The default config file is B<~/.noterc>. You may specify another
 one with the commandline flag I<--config>.
 
 Comments start with #, empty lines will be ignored.
-1 turns an option on, 0 turns it off.
+
+To turn on an option, set it to: B<1>, B<on> or B<yes>.
+
+To turn off an option, set it to: B<0>, B<off> or B<no>.
+
 An option consists of an atribute-value pair separated
-by minimum one space (more spaces and/or tabs are allowed).
+by minimum one space (more spaces and/or tabs are allowed)
+and an optional equal sign in between.
+
+Variable names are case in-sensitive.
 
 For a detailed explanation of each possible parameter take a look
 at the supplied sample configuration file in B<config/noterc>.
@@ -513,6 +523,6 @@ Thomas Linden <tom@daemon.de>
 
 =head1 VERSION
 
-1.2.6 (30/06/2004)
+1.3.0 (11/01/2005)
 
 =cut

@@ -23,12 +23,19 @@
 # http://www.daemon.de/note/
 #
 
+BEGIN {
+  # works on unix or cygwin only!
+  my $path = $0;
+  $path =~ s#/[^/]*$##;
+  unshift @INC, "$path/..";
+}
+
 use strict;
 no strict 'refs';
-#use Data::Dumper;
 use Getopt::Long;
 use FileHandle;
 use File::Spec;
+#use Data::Dumper;
 
 
 #
@@ -66,22 +73,11 @@ my (
     #
     # set from commandline (or interactive)
     #
-    $number, $searchstring, $dump_file, $ImportType, $NewType, $Raw,
+    $number, $searchstring, $dump_file, $ImportType, $NewType, $Raw, $TOPIC,
 
     #
-    # options from config file .noterc
-    #
-    $maxlen, $timelen, $TOPIC, $NOTEDB, $MAX_TIME, $PreferredEditor,
-    $ALWAYS_INT, $KEEP_TIMESTAMP, $COLOR, $ALWAYS_EDIT, $HOME, $FormatText,
-    $BORDER_COLOR, $NOTE_COLOR, $NUM_COLOR, $TOPIC_COLOR, $MAX_NOTE,
-    $USE_CRYPT, $CRYPT_METHOD, $TopicSep, $DEFAULT_LIST, $TIME_COLOR, $SHORT_CD,
-    $USE_CACHE, $AUTO_CLEAR,
-
-    #
-    # db specifics from .noterc
-    #
-    $db, $dbname, $dbhost, $dbport, $dbuser, $dbpasswd, $encrypt_passwd, $clearstring,
-    $table, $fnum, $fnote, $fdate, $date, $dbdriver, $libpath,
+    # configuration options
+    %conf, %driver,
 
     #
     # processed colors
@@ -97,9 +93,9 @@ my (
     #
     # internals
     #
-    $TYPE, $mode, $NoteKey, $TempDir, %Color, @LastTopic,
-    $version, $CurTopic, $CurDepth, $WantTopic,$time_format,
-    $sizeof, %TP, $TreeType, $ListType, $SetTitle,
+    $TYPE, $mode, $NoteKey, %Color, @LastTopic, $timelen, $maxlen,
+    $version, $CurTopic, $CurDepth, $WantTopic, $db,
+    $sizeof, %TP, $TreeType, $ListType, $SetTitle, $clearstring,
     @ArgTopics, $key, $typedef, @NumBlock, $has_nothing, @completion_topics, @completion_notes,
    );
 
@@ -108,40 +104,31 @@ my (
 # DEFAULTS, allows one to use note without a config
 # don't change them, instead use the config file!
 #
-$maxlen 	= 50;
-my $keepmaxlen  = "auto";
-$timelen 	= 22;
-$date 		= &getdate;
+
+$conf{dbdriver}      = "binary";
+$conf{color}         = 1;
+$conf{border_color}  = "bold";
+$conf{num_color}     = "blue";
+$conf{note_color}    = "green";
+$conf{time_color}    = "blue";
+$conf{topic_color}   = "bold";
+$conf{topicsep}      = '/';
+$conf{use_crypt}     = 0;
+$conf{tempdirectory} = File::Spec->tmpdir();
+$conf{always_int}    = 1;
+$conf{always_edit}   = 1;
+$conf{auto_clear}    = 1;
+
+$CONF 		= File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
-$HOME 		= $ENV{'HOME'};
-$CONF 		= File::Spec->catfile($HOME, ".noterc");
-$dbdriver 	= "binary";
-$NOTEDB 	= File::Spec->catfile($HOME, ".notedb");
-$MAX_NOTE 	= 4096;
-$MAX_TIME 	= 84;
-$COLOR 		= "YES";
-$BORDER_COLOR 	= "bold";
-$NUM_COLOR    	= "blue";
-$NOTE_COLOR   	= "green";
-$TIME_COLOR   	= "blue";
-$TOPIC_COLOR 	= "bold";
 $TOPIC 		= 1;
-$TopicSep 	= '/';
-$version 	= "1.2.6";
-if ($TOPIC) {
-  $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
-}
-$USE_CRYPT 	= "NO";
-$TempDir        = File::Spec->tmpdir();
-# mysql stuff
-$table          = "note";
-$fnote          = "note";
-$fdate          = "date";
-$fnum           = "number";
-$ALWAYS_INT     = "YES";
-$ALWAYS_EDIT    = "YES";
-$AUTO_CLEAR     = "YES";
+$version 	= "1.3.0";
+$CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
+$maxlen         = "auto";
+$timelen        = 22;
+
+
 
 # colors available
 # \033[1m%30s\033[0m
@@ -227,11 +214,11 @@ else {
   elsif (defined $opt_l || defined $opt_L) {
     $mode = "list";
     if (defined $opt_l) {
-      @ArgTopics = split /$TopicSep/, $opt_l;
+      @ArgTopics = split /$conf{topicsep}/, $opt_l;
     }
     else {
       $ListType = "LONG";
-      @ArgTopics = split /$TopicSep/, $opt_L;
+      @ArgTopics = split /$conf{topicsep}/, $opt_L;
     }
     $CurDepth += $#ArgTopics + 1 if($opt_l || $opt_L);
     $CurTopic = $ArgTopics[$#ArgTopics];  # use the last element everytime...
@@ -357,70 +344,48 @@ if ($mode eq "encrypt_passwd") {
 }
 
 # Always interactive?
-if ($ALWAYS_INT eq "YES" && $mode ne "dump" && $mode ne "import") {
+if ($conf{always_int} && $mode ne "dump" && $mode ne "import") {
   $mode = "interactive";
 }
 
 # OK ... Long-Listing shall be default ... You wanted it!!!
-if ($DEFAULT_LIST eq "LONG") {
+if ($conf{default_list} eq "LONG") {
   # takes only precedence in commandline mode
   $ListType="LONG";
 }
 
 
 
-# *if* loading of the config was successful, try to load the
-# configured database backend. Currently supported:
-# mysql, dbm and binary.
-if ($libpath) {
-  unshift @INC, $libpath;
-}
-
-if ($dbdriver eq "binary") {
-  eval {
-    require NOTEDB::binary;
-    $db = new NOTEDB($dbdriver, $NOTEDB, $MAX_NOTE, $MAX_TIME, $dbdriver);
-  };
-}
-elsif ($dbdriver eq "mysql") {
-  # do the new() later because of the encrypted password!
-  eval {
-    require NOTEDB::mysql;
-  };
-  die "mysql backend unsupported: $@\n" if($@);
-}
-else {
-  eval {
-    require "NOTEDB::$dbdriver";
-    $db = new NOTEDB($dbdriver, $dbname, $dbhost, $dbuser, $dbpasswd, $table, $fnum, $fnote, $fdate);
-  };
-}
-if ($@) {
-  die "$dbdriver backend unsupported: $@\n";
-}
-
 
 # calculate some constants...
-$BORDERC  = "<$BORDER_COLOR>";
-$_BORDERC = "</$BORDER_COLOR>";
-$NUMC     = "<$NUM_COLOR>";
-$_NUMC    = "</$NUM_COLOR>";
-$NOTEC    = "<$NOTE_COLOR>";
-$_NOTEC   = "</$NOTE_COLOR>";
-$TIMEC    = "<$TIME_COLOR>";
-$_TIMEC   = "</$TIME_COLOR>";
-$TOPICC   = "<$TOPIC_COLOR>";
-$_TOPICC  = "</$TOPIC_COLOR>";
+$BORDERC  = "<$conf{border_color}>";
+$_BORDERC = "</$conf{border_color}>";
+$NUMC     = "<$conf{num_color}>";
+$_NUMC    = "</$conf{num_color}>";
+$NOTEC    = "<$conf{note_color}>";
+$_NOTEC   = "</$conf{note_color}>";
+$TIMEC    = "<$conf{time_color}>";
+$_TIMEC   = "</$conf{time_color}>";
+$TOPICC   = "<$conf{topic_color}>";
+$_TOPICC  = "</$conf{topic_color}>";
 
-$NoteKey  = $TopicSep . "notes" . $TopicSep;
+$NoteKey  = $conf{topicsep} . "notes" . $conf{topicsep};
+
+
+
 
 # default permissions on new files (tmp)
 umask 077;
 
-# check if the user wants to use encryption:
-if ($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
-  if ($CRYPT_METHOD eq "") {
-    $CRYPT_METHOD = "Crypt::IDEA";
+
+# load the parent module
+&load_driver(1);
+
+
+# check wether the user wants to use encryption:
+if ($conf{use_crypt} && $NOTEDB::crypt_supported == 1) {
+  if ($conf{crypt_method} eq "") {
+    $conf{crypt_method} = "Crypt::IDEA";
   }
   if (!exists $ENV{'NOTE_PASSWD'}) {
     print "password: ";
@@ -442,18 +407,21 @@ if ($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
     $key = $ENV{'NOTE_PASSWD'};
   }
   chomp $key;
-  if ($dbdriver eq "mysql") {
+  if ($conf{dbdriver} eq "mysql") {
     eval {
       require Crypt::CBC;
-      my $cipher = new Crypt::CBC($key, $CRYPT_METHOD);
+      my $cipher = new Crypt::CBC($key, $conf{crypt_method});
       # decrypt the dbpasswd, if it's encrypted!
-      my $dbpasswd  = $cipher->decrypt(unpack("u",$dbpasswd)) if($encrypt_passwd);
-      $db = new NOTEDB($dbdriver, $dbname, $dbhost, $dbuser,
-		       $dbpasswd, $table, $fnum, $fnote, $fdate, $dbport);
+      $driver{mysql}->{dbpasswd}  =
+	$cipher->decrypt(unpack("u", $driver{mysql}->{dbpasswd})) if($driver{mysql}->{encrypt_passwd});
+      &load_driver();
     };
     die "Could not connect do db: $@!\n" if($@);
   }
-  $db->use_crypt($key,$CRYPT_METHOD);
+  else {
+    &load_driver();
+  }
+  $db->use_crypt($key,$conf{crypt_method});
   undef $key;
   # verify correctness of passwd
   my ($cnote, $cdate) = $db->get_single(1);
@@ -462,33 +430,31 @@ if ($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
       print "access denied.\n"; # decrypted $date is not a number!
       exit(1);
     }
-  }				#else empty database!
+  } #else empty database!
 }
 else {
-    if ($dbdriver eq "mysql") {
-	$db = new NOTEDB($dbdriver, $dbname, $dbhost, $dbuser,
-			 $dbpasswd, $table, $fnum, $fnote, $fdate, $dbport);
+  &load_driver();
+  $db->no_crypt;
+
+  # does: NOTEDB::crypt_supported = 0;
+  my ($cnote, $cdate) = $db->get_single(1);
+  if ($cdate ne "") {
+    if ($cdate !~ /^\d+\.\d+?/) {
+      print "notedb seems to be encrypted!\n";
+      exit(1);
     }
-    $db->no_crypt;
-    # does: NOTEDB::crypt_supported = 0;
-    my ($cnote, $cdate) = $db->get_single(1);
-    if ($cdate ne "") {
-	if ($cdate !~ /^\d+\.\d+?/) {
-	    print "$NOTEDB seems to be encrypted!\n";
-	    exit(1);
-	}
-    }
+  }
 }
 
 
 # do we use the db cache?
-if ($USE_CACHE) {
+if ($conf{use_cache}) {
     $db->use_cache();
 }
 
 
 # add the backend version to the note version:
-$version .= " " . $db->version();
+$version .= ", " . $conf{dbdriver} . " " . $db->version();
 
 
 # main loop: ###############
@@ -529,7 +495,7 @@ sub encrypt_passwd {
   chomp $key;
   eval {
     require Crypt::CBC;
-    my $cipher = new Crypt::CBC($key, $CRYPT_METHOD);
+    my $cipher = new Crypt::CBC($key, $conf{crypt_method});
     $crypt_string  = pack("u", $cipher->encrypt($clearstring));
   };
   if ($@) {
@@ -574,7 +540,7 @@ sub search {
       print "No searchstring specified!\n";
     }
     else {
-      print "searching the database $dbname for \"$searchstring\"...\n\n";
+      print "searching the database $conf{dbname} for \"$searchstring\"...\n\n";
 
       %res = $db->get_search($searchstring);
       my $nummatches = scalar keys %res;
@@ -618,8 +584,8 @@ sub list {
       if ($TOPIC) {
 	# this allows us to have multiple topics (subtopics!)
 	my ($firstline,$dummy) = split /\n/, $n, 2;
-	if ($firstline =~ /^($TopicSep)/) {
-	  @topic = split(/$TopicSep/,$firstline);
+	if ($firstline =~ /^($conf{topicsep})/) {
+	  @topic = split(/$conf{topicsep}/,$firstline);
 	}
 	else {
 	  @topic = ();
@@ -637,7 +603,7 @@ sub list {
 	}
 	elsif ($topic[$CurDepth-1] eq $CurTopic || ($topic[$CurDepth] eq "" && $CurDepth ==1)) {
 	  # cut the topic off the note-text
-	  if ($n =~ /^($TopicSep)/) {
+	  if ($n =~ /^($conf{topicsep})/) {
 	    $CurItem[$i]->{'note'} = $dummy;
 	  }
 	  else {
@@ -663,19 +629,19 @@ sub list {
 	  # only if there were notes under current topic
 	  undef $PATH;
 	  foreach (@RealTopic) {
-	    $PATH .= $_ . $TopicSep;
+	    $PATH .= $_ . $conf{topicsep};
 	    last if($_ eq $CurTopic);
 	  }
 	}
 	else {
 	  # it is an empty topic, no notes here
-	  $PATH = join $TopicSep, @LastTopic;
-	  $PATH .= $TopicSep . $CurTopic . $TopicSep;
-	  $PATH =~ s/^\Q$TopicSep$TopicSep\E/$TopicSep/;
+	  $PATH = join $conf{topicsep}, @LastTopic;
+	  $PATH .= $conf{topicsep} . $CurTopic . $conf{topicsep};
+	  $PATH =~ s/^\Q$conf{topicsep}$conf{topicsep}\E/$conf{topicsep}/;
 	}
       }
       else {
-	$PATH = $TopicSep;
+	$PATH = $conf{topicsep};
       }
 
       @completion_topics = ();
@@ -683,7 +649,7 @@ sub list {
       # we are at top level, print a list of topics...
       foreach $top (sort(keys %TP)) {
 	push @completion_topics, $top;
-	output("-", " => ". $top . "$TopicSep ($TP{$top} notes)",
+	output("-", " => ". $top . "$conf{topicsep} ($TP{$top} notes)",
 	       " Sub Topic         ");
       }
       #print Dumper(@CurItem);
@@ -701,9 +667,16 @@ sub list {
 ############################### NEW ##################################
 sub new {
     my($TEMP,$editor, $date, $note, $WARN, $c, $line, $num, @topic);
+    if ($conf{readonly}) {
+	print "readonly\n";
+	return;
+    }
     $date = &getdate;
-    if ($ALWAYS_EDIT eq "YES") {
+    return if $db->lock();
+    if ($conf{always_edit}) {
       $TEMP = &gettemp;
+      # security!
+      unlink $TEMP;
       # let the user edit it...
       $editor = &find_editor;
       if ($editor) {
@@ -715,6 +688,7 @@ sub new {
       }
       else {
 	print "Could not find an editor to use!\n";
+	$db->unlock();
 	exit(0);
       }
       # read it in ($note)
@@ -723,6 +697,7 @@ sub new {
       if ($WARN) {
 	print "...edit process interupted! No note has been saved.\n";
 	undef $WARN;
+	$db->unlock();
 	return;
       }
       $c = 0;
@@ -759,12 +734,13 @@ sub new {
     # look if the note was empty, so don't store it!
     if ($note =~ /^\s*$/) {
       print "...your note was empty and will not be saved.\n";
+      $db->unlock();
       return;
     }
     # since we have not a number, look for the next one available:
     $number = $db->get_nextnum();
     if ($TOPIC && $CurTopic ne "") {
-      @topic = split(/$TopicSep/,$note);
+      @topic = split(/$conf{topicsep}/,$note);
       if ($topic[1] eq "") {
 	$note = $PATH . "\n$note";
       }
@@ -772,14 +748,22 @@ sub new {
     $db->set_new($number,$note,$date);
     # everything ok until here!
     print "note stored. it has been assigned the number $number.\n\n";
+    $db->unlock();
   }
 
 
 ############################### DELETE ##################################
 sub del {
     my($i,@count, $setnum, $pos, $ERR);
+    if ($conf{readonly}) {
+        print "readonly\n";
+	return;
+    }
     # delete a note
     &num_bereich;		# get @NumBlock from $number
+
+    return if $db->lock();
+
     foreach $_ (@NumBlock) {
       $ERR = $db->set_del($_);
       if ($ERR) {
@@ -792,19 +776,35 @@ sub del {
     # recount the notenumbers:
     $db->set_recountnums();
 
+    $db->unlock();
     @NumBlock = ();
   }
 
 ############################### EDIT ##################################
 sub edit {
     my($keeptime, $date, $editor, $TEMP, $note, $t, $num, $match, $backup);
+    if ($conf{readonly}) {
+       print "readonly\n";
+       return;
+    }
     # edit a note
     $date = &getdate;
+
+    return if $db->lock();
+
     ($note, $keeptime) = $db->get_single($number);
     if ($keeptime eq "") {
-      print "no note with that number found!\n\n";
-      exit(0) if($mode ne "interactive");
+      print "no note with that number found ($number)!\n\n";
+      if($mode ne "interactive") {
+	$db->unlock();
+	exit(0);
+      }
+      else {
+	$db->unlock();
+	return;
+      }
     }
+
     $TEMP = &gettemp;
     open NOTE,">$TEMP" or die "Could not open $TEMP\n";
     select NOTE;
@@ -837,7 +837,7 @@ sub edit {
     unlink $TEMP || die $!;
 
     if ($note ne $backup) {
-      if ($KEEP_TIMESTAMP eq "YES") {
+      if ($conf{keep_timestamp}) {
 	$t = $keeptime;
       }
       else {
@@ -851,6 +851,7 @@ sub edit {
     else {
       print "note number $number has not changed, no save done.\n";
     }
+    $db->unlock();
   }
 
 
@@ -878,7 +879,7 @@ sub dump {
   }
 
 sub import {
-    my($num, $start, $complete, $dummi, $note, $date, $time, $number, $stdin, $DUMP);
+    my($num, $start, $complete, $dummi, $note, $date, $time, $number, $stdin, $DUMP, %data);
     # open $dump_file and import it into the notedb
     $stdin = 1 if($dump_file eq "-");
     if ($stdin) {
@@ -888,26 +889,27 @@ sub import {
       open (DUMPFILE, "<$dump_file") or die "could not open $dump_file\n";
       $DUMP = *DUMPFILE;
     }
-    $db->set_del_all() if($ImportType ne "");
-    $complete=0;
-    $start = 0;
+
+    $complete = $start = 0;
+    $number = 1;
     while (<$DUMP>) {
       chomp $_;
       if ($_ =~ /^Number:\s\d+/) {
 	if ($start == 0) {
 	  # we have no previous record
-	  ($dummi,$number) = split(/\s/,$_);
 	  $start = 1;
 	}
 	else {
 	  # we got a complete record, save it!
-	  $number = $db->get_nextnum();
-	  $db->set_new($number,$note, $date);
-	  print "note number $number from $dump_file inserted into notedb.\n" if(!$stdin);
+	  $data{$number} = {
+			    date => $date,
+			    note => $note
+			    };
+	  print "fetched note number $number from $dump_file from $date.\n" if(!$stdin);
 	  $complete = 0;
 	  $note = "";
 	  $date = "";
-	  ($dummi,$number) = split(/\s/,$_);
+	  $number++;
 	}
       }
       elsif ($_ =~ /^Timestamp:\s\d+/ && $complete == 0) {
@@ -919,17 +921,23 @@ sub import {
 	$note .= $_ . "\n";
       }
     }
+
     if ($note ne "" && $date ne "") {
       # the last record, if existent
-      $number = $db->get_nextnum();
-      $db->set_new($number,$note, $date);
-      print "note number $number from $dump_file inserted into notedb.\n" if(!$stdin);
+      $data{$number} = {
+			data => $date,
+			note => $note
+		       };
+      print "fetched note number $number from $dump_file from $date.\n" if(!$stdin);
     }
-  }
+
+    $db->set_del_all() if($ImportType ne "");
+    $db->import_data(\%data);
+}
 
 sub determine_width {
   # determine terminal wide, if possible
-  if ($keepmaxlen eq "auto") {
+  if ($maxlen eq "auto") {
     eval {
       my $wide = `stty -a`;
       if ($wide =~ /columns (\d+?);/) {
@@ -949,7 +957,7 @@ sub determine_width {
 
 sub clear {
   # first, try to determine the terminal height
-  return if(!$AUTO_CLEAR);
+  return if(!$conf{auto_clear});
   my $hoch;
   eval {
     my $height = `stty -a`;
@@ -989,7 +997,7 @@ sub interactive {
     # per default let's list all the stuff:
     # Initially do a list command!
     &determine_width;
-    $ListType = ($DEFAULT_LIST eq "LONG") ? "LONG" : "";
+    $ListType = ($conf{default_list} eq "LONG") ? "LONG" : "";
     &list;
 
     my ($term, $prompt, $attribs);
@@ -1001,7 +1009,7 @@ sub interactive {
     }
 
     for (;;) {
-      $ListType = ($DEFAULT_LIST eq "LONG") ? "LONG" : "";
+      $ListType = ($conf{default_list} eq "LONG") ? "LONG" : "";
       undef $SetTitle;
       if ($CurDepth > 2) {
 	print C $menu . $TOPICC . "../" . $CurTopic . $_TOPICC . ">";
@@ -1140,13 +1148,13 @@ sub interactive {
 	# unknown
 	my $unchar = $char;
 	$unchar =~ s/^cd //;	# you may use cd <topic> now!
-	if ($unchar =~ /^\d+?$/ && $SHORT_CD) {
+	if ($unchar =~ /^\d+?$/ && $conf{short_cd}) {
 	  # just a number!
 	  my @topic;
 	  my ($cnote, $cdate) = $db->get_single($unchar);
 	  my ($firstline,$dummy) = split /\n/, $cnote, 2;
-	  if ($firstline =~ /^($TopicSep)/) {
-	    @topic = split(/$TopicSep/,$firstline);
+	  if ($firstline =~ /^($conf{topicsep})/) {
+	    @topic = split(/$conf{topicsep}/,$firstline);
 	  }
 	  else {
 	    @topic = ();
@@ -1160,7 +1168,7 @@ sub interactive {
 	  }
 	  &list;
 	}
-	elsif ($unchar eq $TopicSep) {
+	elsif ($unchar eq $conf{topicsep}) {
 	  # cd /
 	  $CurDepth = 1;
 	  $CurTopic = "";
@@ -1215,7 +1223,7 @@ Read the note(1) manpage for more details.
   }
 
 sub find_editor {
-  return $PreferredEditor || $ENV{"VISUAL"} || $ENV{"EDITOR"} || "vi";
+  return $conf{preferrededitor} || $ENV{"VISUAL"} || $ENV{"EDITOR"} || "vi";
 }
 
 #/
@@ -1223,7 +1231,7 @@ sub find_editor {
 sub format {
   # make text bold/underlined/inverse using current $NOTEC
   my($note) = @_;
-  if ($FormatText) {
+  if ($conf{formattext}) {
     # prepare colors to be used for replacement
     my $BN  = uc($NOTEC);
     my $_BN = uc($_NOTEC);
@@ -1236,7 +1244,7 @@ sub format {
     $IN     =~ s/<(.*)>/<$1I>/;
     $_IN    =~ s/<(.*)>/<$1I>/;
 
-    if ($FormatText eq "simple") {
+    if ($conf{formattext} eq "simple") {
       $note =~ s/\*([^\*]*)\*/$BN$1$_BN/g;
       $note =~ s/_([^_]*)_/$UN$1$_UN/g;
       $note =~ s/{([^}]*)}/$IN$1$_IN/g;
@@ -1299,7 +1307,7 @@ sub output {
       $title = "";
       $CUTSPACE = " " x $txtlen;
       if ($TYPE eq "search") {
-	$note =~ s/^\Q$TopicSep\E.+?\Q$TopicSep\E\n//;
+	$note =~ s/^\Q$conf{topicsep}\E.+?\Q$conf{topicsep}\E\n//;
       }
       $note =~ s/\n/$CUTSPACE/g;
       $len   = length($note);
@@ -1328,8 +1336,8 @@ sub output {
       if ($Raw) {
 	print "$num  ";
 	print "$time  " if($ListType eq "LONG");
-	if ($title =~ /^ => (.*)$TopicSep (.*)$/) {
-	  $title = "$1$TopicSep $2"; # seems to be a topic!
+	if ($title =~ /^ => (.*)$conf{topicsep} (.*)$/) {
+	  $title = "$1$conf{topicsep} $2"; # seems to be a topic!
 	}
 	print "$title\n";
       }
@@ -1363,7 +1371,7 @@ sub C {
     $S = $_[0];
     foreach $Col (%Color) {
       if ($S =~ /<$Col>/g) {
-	if ($COLOR ne "NO") {
+	if ($conf{color}) {
 	  $NC = "\033[" . $Color{$Col} . "m";
 	  $S =~ s/<$Col>/$NC/g;
 	  $S =~ s/<\/$Col>/$default/g;
@@ -1426,8 +1434,8 @@ sub getdate {
     $min  =~ s/^(\d)$/0$1/;
     $sec  =~ s/^(\d)$/0$1/;
     $mday =~ s/^(\d)$/0$1/;
-    if ($time_format) {
-      my $back = $time_format;
+    if ($conf{time_format}) {
+      my $back = $conf{time_format};
       $back =~ s/YYYY/$year/;
       $back =~ s/YY/substr($year, 1, 2)/e;
       $back =~ s/MM/$mon/;
@@ -1448,7 +1456,7 @@ sub gettemp {
     for (0..10) {
       $random .= $range[rand(int($#range)+1)];
     }
-    my $tempfile = $TempDir . "/" . $USER  . "." . $random;
+    my $tempfile = File::Spec->catfile($conf{tempdirectory}, $USER . $random);
     if (-e $tempfile) {
       # avoid race conditions!
       unlink $tempfile;
@@ -1512,19 +1520,19 @@ sub display_tree {
     $t = $res{$num}->{'date'};
     # this allows us to have multiple topics (subtopics!)
     my ($firstline,$text,$untext) = split /\n/, $n, 3;
-    if ($firstline =~ /^($TopicSep)/) {
-      $firstline =~ s/($TopicSep)*$//; #remove TopicSepatator
-      @nodes = split(/$TopicSep/,$firstline);
+    if ($firstline =~ /^($conf{topicsep})/) {
+      $firstline =~ s/($conf{topicsep})*$//; #remove TopicSepatator
+      @nodes = split(/$conf{topicsep}/,$firstline);
     }
     else {
-      @nodes = (); #("$TopicSep");
+      @nodes = (); #("$conf{topicsep}");
       $text = $firstline;
     }
     &tree($num, $text, \%TREE, @nodes);
   }
   #return if ($num == 0);
   # now that we have build our tree (in %TREE) go on t display it:
-  print C $BORDERC . "\n[" . $TopicSep . $BORDERC . "]\n";
+  print C $BORDERC . "\n[" . $conf{topicsep} . $BORDERC . "]\n";
   &print_tree(\%{$TREE{''}},"") if(%TREE);
   print C $BORDERC . $_BORDERC . "\n";
 }
@@ -1578,58 +1586,31 @@ sub getconfig {
       chomp;
       next if(/^\s*$/ || /^\s*#/);
       my ($option,$value) = split /\s\s*=?\s*/, $_, 2;
-      $value 		=~ s/\s*$//;
-      $home 		= $value if (/^Home/);
-      $libpath 	        = $value if (/^LibPath/);
-      $dbdriver 	= $value if (/^DbDriver/);
-      $dbhost 	        = $value if (/^DbHost/);
-      $dbport           = $value if (/^DbPort/);
-      $dbuser 	        = $value if (/^DbUser/);
-      $dbpasswd 	= $value if (/^DbPasswd/);
-      $encrypt_passwd   = $value if (/^encrypt_passwd/);
-      $dbname 	        = $value if (/^DbName/);
-      $table 		= $value if (/^DbTable/);
-      $fnum 		= $value if (/^FieldNumber/);
-      $fnote 		= $value if (/^FieldNote/);
-      $fdate 		= $value if (/^FieldDate/);
-      $SHORT_CD         = $value if (/^ShortCd/);
-      $NOTEDB 	        = $value if (/^NoteDb/);
-      $MAX_NOTE 	= $value if (/^MaxNoteByte/);
-      $MAX_TIME 	= $value if (/^MaxTimeByte/);
-      $CRYPT_METHOD     = $value if (/^CryptMethod/);
-      $USE_CRYPT 	= "YES"  if (/^UseEncryption/ && $value == 1);
-      $USE_CRYPT 	= undef  if (/^UseEncryption/ && $value == 0);
-      $ALWAYS_INT 	= "YES"  if (/^AlwaysInteractive/ && $value == 1);
-      $ALWAYS_INT 	= undef  if (/^AlwaysInteractive/ && $value == 0);
-      $DEFAULT_LIST 	= "LONG" if (/^DefaultLong/ && $value == 1);
-      $DEFAULT_LIST 	= undef  if (/^DefaultLong/ && $value == 0);
-      $ALWAYS_EDIT 	= "YES"  if (/^AlwaysEditor/ && $value == 1);
-      $ALWAYS_EDIT 	= undef  if (/^AlwaysEditor/ && $value == 0);
-      $KEEP_TIMESTAMP   = "YES"  if (/^KeepTimeStamp/ && $value == 1);
-      $KEEP_TIMESTAMP   = undef  if (/^KeepTimeStamp/ && $value == 0);
-      $AUTO_CLEAR       = "YES"  if (/^AutoClear/ && $value == 1);
-      $COLOR            = "YES"  if (/^UseColors/ && $value == 1);
-      $COLOR    	= "NO"   if (/^UseColors/ && $value == 0);
-      $TopicSep 	= $value if (/^TopicSeparator/);
-      $maxlen = $keepmaxlen = $value if (/^MaxLen/);
-      $BORDER_COLOR 	= $value if (/^BorderColor/);
-      $NUM_COLOR 	= $value if (/^NumberColor/);
-      $NOTE_COLOR 	= $value if (/^NoteColor/);
-      $TIME_COLOR 	= $value if (/^TimeColor/);
-      $TOPIC_COLOR	= $value if (/^TopicColor/);
-      $PreferredEditor  = $value if (/^PreferredEditor/);
-      $FormatText       = $value if (/^FormatText/);
-      $TempDir          = $value if (/^TempDirectory/);
-      $USE_CACHE        = $value if (/^Cache/);
-      $time_format      = $value if (/^TimeFormat/);
-      $AUTO_CLEAR       = $value if (/^AutoClear/);
-    }
 
-    if ($NOTEDB =~ /^(~\/)(.*)$/) {
-      $NOTEDB = File::Spec->catfile($HOME, $2);
-    }
+      $value =~ s/\s*$//;
+      $value =~ s/\s*#.*$//;
+      if ($value =~ /^(~\/)(.*)$/) {
+	$value = File::Spec->catfile($ENV{HOME}, $2);
+      }
 
-    $libpath = (File::Spec->splitpath($libpath))[1];
+      if ($value =~ /^(yes|on|1)$/i) {
+	$value = 1;
+      }
+      elsif ($value =~ /^(no|off|0)$/i) {
+	$value = 0;
+      }
+
+      $option = lc($option);
+
+      if ($option =~ /^(.+)::(.*)$/) {
+	# driver option
+	$driver{$1}->{$2} = $value;
+      }
+      else {
+	# other option
+	$conf{$option} = $value;
+      }
+    }
 
     close CONFIG;
 }
@@ -1660,125 +1641,27 @@ sub complete {
   }
 }
 
+sub load_driver {
+  my ($parent) = @_;
+
+  if ($parent) {
+    my $pkg = "NOTEDB";
+    if ($@) {
+      die "Could not load the NOTEDB module: $@\n";
+    }
+  }
+  else {
+    # load the backend driver
+    my $pkg = "NOTEDB::$conf{dbdriver}";
+    eval "use $pkg;";
+    if ($@) {
+      die "$conf{dbdriver} backend unsupported: $@\n";
+    }
+    else {
+      $db = $pkg->new(%{$driver{$conf{dbdriver}}});
+    }
+  }
+}
 
 
 __END__
-#
-# $Log: note,v $
-# Revision 1.11  2000/12/09 21:56:08  zarahg
-# cvs update to 1.1.2, but incomplete, more to come
-#
-# Revision 1.10  2000/08/19 13:38:33  zarahg
-# .
-#
-# Revision 1.9  2000/08/14 14:14:20  zarahg
-# changed bug in cd .. after cd <number>, $PATH was empty.
-#
-# Revision 1.8  2000/08/14 11:21:34  zarahg
-# hmmm... the default size for time was too small :-(
-#
-# Revision 1.7  2000/08/14 10:59:26  zarahg
-# moved %Color hash from ::C() to ::main, displaying is now faster.
-#
-# Revision 1.6  2000/08/14 10:27:26  zarahg
-# use now better color defaults and added 2 new color values, bold an white_black
-#
-# Revision 1.5  2000/08/11 00:05:58  zarahg
-# 1.1.0 beta2 ready for testing
-#
-# Revision 1.4  2000/08/10 09:21:56  zarahg
-# ready for 1.1.0 shipping, lots of changes/additions, see Changelog
-#
-# Revision 1.3  2000/07/21 06:41:25  zarahg
-# 638: precedence bug fixed
-#
-# Revision 1.2  2000/07/09 22:10:03  zarahg
-# tempfile management more secure now. new option TempDirectory. thx to Donald.
-#
-# Revision 1.30  2000/07/09 21:59:48  scip
-# secure temp files
-#
-# Revision 1.29  2000/06/25 20:13:23  scip
-# *** empty log message ***
-#
-# Revision 1.28  2000/06/25 19:51:51  scip
-# changed pattern matching of seraching(\@ ... \E)
-# added --config option
-#
-# Revision 1.27  2000/05/16 23:51:35  thomas
-# fixed many option-parsing related bugd!
-#
-# Revision 1.26  2000/05/13 01:05:17  thomas
-# changed config format and fixed some bugs
-# as well as some other additions...
-#
-# Revision 1.25  2000/05/11 23:42:43  thomas
-# --tree changed to --topic
-#
-# Revision 1.24  2000/05/10 22:59:44  thomas
-# updated usage to reflect --raw and build it into output
-# and display subs.
-#
-# Revision 1.23  2000/05/10 22:19:04  thomas
-# changed to Getopt::Long, added --raw
-#
-# Revision 1.22  2000/05/01 18:51:40  thomas
-# added "-" to sub dump
-#
-# Revision 1.21  2000/05/01 00:17:27  thomas
-# *** empty log message ***
-#
-# Revision 1.20  2000/04/30 23:31:38  thomas
-# added -o and coloured sub help.
-#
-# Revision 1.19  2000/04/30 16:07:23  thomas
-# *** empty log message ***
-#
-# Revision 1.18  2000/04/30 14:58:21  thomas
-# updated the usage and help subs
-#
-# Revision 1.17  2000/04/30 14:44:38  thomas
-# added colors to the tree functions
-#
-# Revision 1.16  2000/04/30 14:28:38  thomas
-# added the t command, which displays a topic-tree.
-# and enhanced the list command in interactive mode
-#
-# Revision 1.15  2000/03/19 23:41:04  thomas
-# changed set_del, now no extra TEMP file is required!
-# instead I get it from $this->get_all() !
-# Revision 1.14  2000/03/19 22:51:49  thomas
-# Bug in NOTEDB::binary fixed, recount of nubers was
-# incorrect.
-#
-# Revision 1.13  2000/03/19 11:53:32  thomas
-# edit bug fixed (ude => uen)
-#
-# Revision 1.12  2000/03/19 03:06:51  thomas
-# backend support completed.
-# mysql and binary backends now excluded in separate files
-#
-# Revision 1.11  2000/03/18 00:16:47  thomas
-# added NOTEDB::mysql and changed note to work with that.
-# thus, from now on there is only one script to maintain and
-# it is possible to provide more bacjends as well as making
-# additional scripts upon them, i.e. cgi script...
-#
-# Revision 1.8  2000/03/13 22:48:43  thomas
-# small width bug fixed
-#
-# Revision 1.7  2000/03/08 23:11:19  tom
-# added cd
-#
-# Revision 1.6  2000/03/08 22:50:41  tom
-# Added the $KEEP_TIMESTAMP option and fixed a bug regarding topic names
-# and invalid resolution of them in case it started with "1 name".
-#
-# Revision 1.5  2000/02/25 20:59:30  tom
-# corrected small timestamp problem in &edit and &new
-#
-# Revision 1.4  2000/02/25 13:24:11  tom
-# fixed a small bug, that caused to use the last line for a note title instead the 2nd.
-#
-# Revision 1.3  2000/02/25 11:28:53  tom
-# all changes from bin version applied to sql version

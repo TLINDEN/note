@@ -4,32 +4,42 @@
 # DBM database backend. see docu: perldoc NOTEDB::dbm
 #
 
-package NOTEDB;
+package NOTEDB::dbm;
+
+$NOTEDB::dbm::VERSION = "1.40";
 
 use DB_File;
-use Data::Dumper;
 use NOTEDB;
 use strict;
+use Exporter ();
+use vars qw(@ISA @EXPORT %note %date);
+@ISA = qw(NOTEDB Exporter);
 
 
 
-# Globals:
-my (%note, %date);
+
 
 
 sub new
 {
-    my($this, $dbdriver, $dbm_dir) = @_;
+    my($this, %param) = @_;
     my $class = ref($this) || $this;
     my $self = {};
     bless($self,$class);
 
-    my $notefile     = "note.dbm";
-    my $timefile     = "date.dbm";
-    $self->{version} = "(NOTEDB::dbm, 1.2)";
+    my $notefile = "note.dbm";
+    my $timefile = "date.dbm";
+    my $dbm_dir  = $param{directory} || File::Spec->catfile($ENV{HOME}, ".note_dbm");
 
-    tie %note,  "DB_File", "$dbm_dir/$notefile"  || die $!;
-    tie %date,  "DB_File", "$dbm_dir/$timefile"  || die $!;
+    if (! -d $dbm_dir) {
+      # try to make it
+      mkdir $dbm_dir || die "Could not create $dbm_dir: $!\n";
+    }
+
+    tie %note,  "DB_File", "$dbm_dir/$notefile"  || die "Could not tie $dbm_dir/$notefile: $!\n";
+    tie %date,  "DB_File", "$dbm_dir/$timefile"  || die "Could not tie $dbm_dir/$timefile: $!\n";
+
+    $self->{LOCKFILE} = $param{dbname} . "~LOCK";
 
     return $self;
 }
@@ -66,6 +76,14 @@ sub get_all
     return %res;
 }
 
+sub import_data {
+  my ($this, $data) = @_;
+  foreach my $num (keys %{$data}) {
+    my $pos = $this->get_nextnum();
+    $note{$pos} = $this->ude($note{$num}->{note});
+    $date{$pos} = $this->ude($date{$num}->{date});
+  }
+}
 
 sub get_nextnum
 {

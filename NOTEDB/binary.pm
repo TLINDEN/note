@@ -3,38 +3,44 @@
 # Perl module for note
 # binary database backend. see docu: perldoc NOTEDB::binary
 #
-package NOTEDB;
+package NOTEDB::binary;
+
+$NOTEDB::binary::VERSION = "1.10";
 
 use strict;
-use Data::Dumper;
+#use Data::Dumper;
 use IO::Seekable;
 use File::Spec;
-
-use NOTEDB;
-
 use Fcntl qw(LOCK_EX LOCK_UN);
 
+use NOTEDB;
+use Exporter ();
+use vars qw(@ISA @EXPORT);
+@ISA = qw(NOTEDB Exporter);
 
 
-sub new
-{
-    my($this, $dbdriver, $dbname, $MAX_NOTE, $MAX_TIME) = @_;
+
+
+sub new {
+    my($this, %param) = @_;
 
     my $class = ref($this) || $this;
     my $self = {};
     bless($self,$class);
 
-    if(! -e $dbname) {
-	open(TT,">$dbname") or die "Could not create $dbname: $!\n";
+    $self->{NOTEDB}  = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb");
+    my $MAX_NOTE     = $param{max_note} || 4096;
+    my $MAX_TIME     = $param{max_time} || 64;
+
+    if(! -e $self->{NOTEDB}) {
+	open(TT,">$self->{NOTEDB}") or die "Could not create $self->{NOTEDB}: $!\n";
 	close (TT);
     }
-    elsif(! -w $dbname) {
-	print "$dbname is not writable!\n";
+    elsif(! -w $self->{NOTEDB}) {
+	print "$self->{NOTEDB} is not writable!\n";
 	exit(1);
     }
 
-    $self->{version} = "(NOTEDB::binary, 1.8)";
-    $self->{NOTEDB}  = $dbname;
 
     my $TYPEDEF      = "i a$MAX_NOTE a$MAX_TIME";
     my $SIZEOF       = length pack($TYPEDEF, () );
@@ -42,6 +48,7 @@ sub new
     $self->{sizeof}  = $SIZEOF;
     $self->{typedef} = $TYPEDEF;
     $self->{maxnote} = $MAX_NOTE;
+    $self->{LOCKFILE} = $self->{NOTEDB} . "~LOCK";
 
     return $self;
 }
@@ -54,7 +61,7 @@ sub DESTROY
 
 sub version {
     my $this = shift;
-    return $this->{version};
+    return $NOTEDB::binary::VERSION;
 }
 
 
@@ -116,6 +123,13 @@ sub get_all
     return %res;
 }
 
+sub import_data {
+  my ($this, $data) = @_;
+  foreach my $num (keys %{$data}) {
+    my $pos = $this->get_nextnum();
+    $this->set_edit($pos, $data->{$num}->{note}, $data->{$num}->{date});
+  }
+}
 
 sub get_nextnum
 {
@@ -365,6 +379,31 @@ sub warn_if_too_big {
   }
 }
 
+sub _retrieve {
+  my ($this) = @_;
+  my $file = $this->{dbname};
+  if (-s $file) {
+    if ($this->changed() || $this->{unread}) {
+      my $fh = new FileHandle "<$this->{dbname}" or die "could not open $this->{dbname}\n";
+      flock $fh, LOCK_EX;
+
+      my %data = ParseConfig(-ConfigFile => $fh) or die "could not read to database: $!\n";
+
+      flock $fh, LOCK_UN;
+      $fh->close();
+
+      $this->{unread} = 0;
+      $this->{data}   = \%data;
+      return %data;
+    }
+    else {
+      return %{$this->{data}};
+    }
+  }
+  else {
+    return ();
+  }
+}
 
 
 1; # keep this!

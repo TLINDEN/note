@@ -2,7 +2,7 @@
 # installs note
 # This is the installer for the mysql version only!
 
-echo "Welcome to note `cat VERSION` installation."
+echo "Welcome to note `cat ../VERSION` installation."
 echo "the install script will ask you a view questions,"
 echo "make sure to answer them correctly!"
 echo

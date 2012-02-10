@@ -2,7 +2,7 @@
 # this is a generic module, used by note database
 # backend modules.
 #
-# Copyright (c) 2000-2003 Thomas Linden <tom@daemon.de>
+# Copyright (c) 2000-2004 Thomas Linden <tom@daemon.de>
 
 
 package NOTEDB;
@@ -238,6 +238,61 @@ sub check_exact {
   return $str;
 }
 
+
+
+
+sub lock {
+  my ($this) = @_;
+
+  if (-e $this->{LOCKFILE}) {
+    open LOCK, "<$this->{LOCKFILE}" or die "could not open $this->{LOCKFILE}: $!\n";
+    my $data = <LOCK>;
+    close LOCK;
+    chomp $data;
+    print "-- waiting for lock by $data --\n";
+    print "-- remove the lockfile if you are sure: \"$this->{LOCKFILE}\" --\n";
+  }
+
+  my $timeout = 60;
+
+  eval {
+    local $SIG{ALRM} = sub { die "timeout" };
+    local $SIG{INT}  = sub { die "interrupted"   };
+    alarm $timeout - 2;
+    while (1) {
+      if (! -e $this->{LOCKFILE}) {
+	open LOCK, ">$this->{LOCKFILE}" or die "could not open $this->{LOCKFILE}: $!\n";
+	flock LOCK, LOCK_EX;
+
+	my $now = scalar localtime();
+	print LOCK "$ENV{USER} since $now (PID: $$)\n";
+
+	flock LOCK, LOCK_UN;
+	close LOCK;
+	alarm 0;
+	return 0;
+      }
+      printf " %0d\r", $timeout;
+      $timeout--;
+      sleep 1;
+    }
+  };
+  if($@) {
+    if ($@ =~ /^inter/) {
+      print " interrupted\n";
+    }
+    else {
+      print " timeout\n";
+    }
+    return 1;
+  }
+  return 0;
+}
+
+sub unlock {
+  my ($this) = @_;
+  unlink $this->{LOCKFILE};
+}
 
 
 

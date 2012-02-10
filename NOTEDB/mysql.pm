@@ -1,30 +1,40 @@
-#!/usr/bin/perl
-# $Id: mysql.pm,v 1.3 2000/08/11 00:05:58 zarahg Exp $
+#
 # Perl module for note
 # mysql database backend. see docu: perldoc NOTEDB::mysql
 #
 
 
-package NOTEDB;
+package NOTEDB::mysql;
 
+$NOTEDB::mysql::VERSION = "1.50";
 
 use DBI;
 use strict;
-use Data::Dumper;
+#use Data::Dumper;
 use NOTEDB;
 
+use Exporter ();
+use vars qw(@ISA @EXPORT);
+@ISA = qw(NOTEDB Exporter);
 
 
-sub new
-{
-    # no prototype, because of the bin-version, which takes only a filename!
 
-    my($this, $dbdriver, $dbname, $dbhost, $dbuser, $dbpasswd,
-        $table, $fnum, $fnote, $fdate, $dbport) = @_;
+
+sub new {
+    my($this, %param) = @_;
 
     my $class = ref($this) || $this;
     my $self = {};
     bless($self,$class);
+
+    my $dbname   = $param{dbname}   || "note";
+    my $dbhost   = $param{dbhost}   || "localhost";
+    my $dbuser   = $param{dbuser}   || "";
+    my $dbpasswd = $param{dbpasswd} || "";
+    my $dbport   = $param{dbport}   || "";
+    my $fnum     = "number";
+    my $fnote    = "note";
+    my $fdate    = "date";
 
     my $database;
     if ($dbport) {
@@ -34,8 +44,7 @@ sub new
 	$database = "DBI:$dbdriver:$dbname;host=$dbhost";
     }
 
-    $self->{version}       = "(NOTEDB::mysql, 1.5)";
-    $self->{table}         = $table;
+    $self->{table}         = "table";
 
     $self->{sql_getsingle} = "SELECT $fnote,$fdate FROM $self->{table} WHERE $fnum = ?";
     $self->{sql_all}       = "SELECT $fnum,$fnote,$fdate FROM $self->{table}";
@@ -276,6 +285,14 @@ sub set_recountnums {
     }
     $this->unlock;
     $this->changed;
+}
+
+sub import_data {
+  my ($this, $data) = @_;
+  foreach my $num (keys %{$data}) {
+    my $pos = $this->get_nextnum();
+    $this->set_edit($pos, $data->{$num}->{note}, $data->{$num}->{date});
+  }
 }
 
 sub uen

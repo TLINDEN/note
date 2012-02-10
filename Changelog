@@ -1,3 +1,23 @@
+1.2.7:
+ADDED:          new config option: ReadOnly
+ADDED:          new database backend: NOTEDB::text, which uses the Storable
+		module.
+CHANGED:        the data import will now written to db once.
+CHANGED:        added global database locking support, which is usually
+                useful in multiuser environments.
+ADDED:          new database backend: NOTEDB::general, which uses the
+                Config::General module.
+CLEANUP:        almost everywhere
+CHANGED:        noterc config format changed! especially the config for
+	        backend drivers has changed a lot.
+CHANGED:        the configuration variables are now stored in a hash, this
+                saved some global variables, the driver variables are stored
+                in an extra hash, which contains one key per driver, this
+                hash gets supplied to the driver backend module 1:1.
+CHANGED:        the libpath variable has been removed, it didnt't work either.
+                use now .. instead, so that a local installation for a non
+	        root user is still possible.
+================================================================================
 1.2.6:
 FIXED:		the binary driver (NOTEDB::binary) encounters now if a note
 		entry is bigger then MaxNoteByte. It prints the overlapping
