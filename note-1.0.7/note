@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: note,v 1.2 2000/07/09 22:10:03 zarahg Exp $
+# $Id: note,v 1.27 2000/05/16 23:51:35 thomas Exp thomas $
 # 
 #
 # note - console notes management with database and encryption support.
@@ -59,7 +59,7 @@ my (
 	# commandline options
 	#
 	$opt_, $opt_i, $opt_r, $opt_e, $opt_d,
-	$opt_s, $opt_t, $opt_T, $opt_l, $opt_L, $opt_c,
+	$opt_s, $opt_t, $opt_T, $opt_l, $opt_L,
 	$opt_D, $opt_I, $opt_o, $opt_h, $opt_n, $opt_v, 
 
 	#
@@ -95,7 +95,7 @@ my (
 	# 
 	# internals
 	# 
-	$TYPE, $mode, $NoteKey, $TempDir,
+	$TYPE, $mode, $NoteKey, 
 	$version, $number, $CurTopic, $CurDepth, $WantTopic,
         $sizeof, %TP, $TreeType, $ListType, $SetTitle,
         @ArgTopics, $key, $typedef, @NumBlock, $has_nothing,
@@ -126,13 +126,13 @@ $TIME_COLOR   	= "black";
 $TOPIC_COLOR 	= "BLACK";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.0.8";
+$version 	= "1.0.6";
 if($TOPIC)
 {
     $CurDepth 	= 1; # the current depth inside the topic "directory" structure...
 }
 $USE_CRYPT 	= "NO";
-$TempDir        = "/tmp";
+
 
 
 
@@ -154,17 +154,16 @@ else
 	Getopt::Long::Configure( qw(no_ignore_case));
 	GetOptions (
 	"interactive|i!" => \$opt_i,	# no arg
-	"config|c=s"	 => \$opt_c,	# string,  required
 	"raw|r!"	 => \$opt_r,	# no arg
 	"edit|e=i"	 => \$opt_e,	# integer, required
 	"delete|d=s"	 => \$opt_d,	# integer, required
 	"search|s=s"	 => \$opt_s,	# string,  required
 	"tree|topic|t!"	 => \$opt_t,	# no arg
-	"longtopic|T!"	 => \$opt_T,	# no arg
+	"long_tree|T!"	 => \$opt_T,	# no arg
 	"list|l:s"	 => \$opt_l,	# string,  optional
-	"longlist|L:s"	 => \$opt_L,	# string,  optional
-	"dump||Dump|D:s"	 => \$opt_D,	# string,  optional
-	"import|Import|I:s"	 => \$opt_I,	# string,  optional
+	"long_list|L:s"	 => \$opt_L,	# string,  optional
+	"dump|D:s"	 => \$opt_D,	# string,  optional
+	"import|I:s"	 => \$opt_I,	# string,  optional
 	"overwrite|o!"	 => \$opt_o,	# no arg
 	"help|h|?!"	 => \$opt_h,	# no arg	
 	"version|v!"	 => \$opt_v	# no arg
@@ -244,15 +243,7 @@ else
 		&usage;
 	}
 	else {
-		if($opt_c && $mode eq "" && !$opt_n) {
-			$mode = "new";
-		}
-		elsif($opt_c && $mode eq "") {
-			$mode = ""; # huh?!
-		}
-		else {
-			$has_nothing = 1;
-		}
+		$has_nothing = 1;
 	}
 	### determine generic options
         if($opt_n =~ /^[\d+\-?\,*]+$/) {
@@ -290,15 +281,9 @@ if($has_nothing && $mode eq "")
 
 
 # read the configfile.
-$CONF = $opt_c if($opt_c); # if given by commandline, use this.
 if(-e $CONF)
 {
 	&getconfig($CONF);
-}
-elsif($opt_c) {
-	# only wrong, if specified by commandline! else use default values!
-	print STDERR "Could not open \"$CONF\": file does not exist or permission denied!\n";
-	exit(1);
 }
 
 
@@ -320,6 +305,12 @@ if($DEFAULT_LIST eq "LONG")
 # *if* loading of the config was successful, try to load the
 # configured database backend. Currently supported: mysql and binary.
 push @INC, $libpath;
+#if($dbdriver eq "mysql") {
+#	eval {
+#		require NOTEDB::mysql;
+#		$db = new NOTEDB($dbdriver, $dbname, $dbhost, $dbuser, $dbpasswd, $table, $fnum, $fnote, $fdate);
+#	}
+#}
 if($dbdriver eq "binary") {
 	eval {
 		require NOTEDB::binary;
@@ -355,8 +346,12 @@ $_TOPICC  = "</$TOPIC_COLOR>";
 
 $NoteKey  = $TopicSep . "notes" . $TopicSep;
 
-# default permissions on new files (tmp)
-umask 077;
+
+if($ListType ne "LONG" && $mode ne "interactive")
+{
+     #$maxlen += $timelen; # no time will be displayed!
+}
+
 
 # check if the user wants to use encryption:
 if($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
@@ -630,13 +625,11 @@ sub new
 	$date = &getdate;
 	if($ALWAYS_EDIT eq "YES")
 	{
-		$TEMP = &gettemp;
+		$TEMP = "/tmp/note.$$";
 		# let the user edit it...
 	    	$editor = &find_editor;
         	if($editor)
         	{
-		        system "touch", $TEMP && die $!;
-			system "chattr", "+s", $TEMP; # ignore errors, since only on ext2 supported!
         	        system $editor, $TEMP;
         	}
         	else
@@ -742,12 +735,10 @@ sub edit
 		print "no note with that number found!\n\n";
 		exit(0) if($mode ne "interactive");
     	}	
-	$TEMP = &gettemp;
+	$TEMP = "/tmp/note.$USER.$$";
 	open NOTE,">$TEMP" or die "Could not open $TEMP\n";
 	select NOTE;
-	
-        system "chattr", "+s", $TEMP; # ignore errors, like in new()
-	
+
 	print $note;
 	close NOTE;
 	select STDOUT;
@@ -771,7 +762,7 @@ sub edit
 	chomp $note;
 	close NOTE;
 
-	unlink $TEMP || die $!;
+	unlink $TEMP;
 
 	if($KEEP_TIMESTAMP eq "YES")
 	{
@@ -1071,7 +1062,6 @@ Usage: 	note [ options ] [ number [,number...]]
 Options:
 -h	--help			displays this help screen
 -v	--version		displays the version number
--c	--config <file>		use another config file than the default \~/.noterc
 -l	--list [<topic>]	lists all existing notes If no topic were specified,
 				it will display a list of all existing topics.
 -L	--longlist [<topic>]	the same as -l but prints also the timestamp
@@ -1381,24 +1371,6 @@ sub getdate
 }
 
 
-sub gettemp
-{
-  my($random, @range);
-  @range=('0'..'9','a'..'z','A'..'Z');
-  srand(time||$$);
-  for (0..10) {
-    $random .= $range[rand(int($#range)+1)];
-  }
-  my $tempfile = $TempDir . "/" . $USER  . "." . $random;
-  if (-e $tempfile) {
-    # avoid race conditions!
-    unlink $tempfile;
-  }
-  return $tempfile;
-}
-
-
-
 sub help
 {
 my $B = "<blackI>";
@@ -1570,7 +1542,6 @@ sub getconfig
 		$TOPIC_COLOR	 = $value if (/^TopicColor/);
 		$PreferredEditor = $value if (/^PreferredEditor/);
 		$FormatText      = $value if (/^FormatText/);
-		$TempDir         = $value if (/^TempDirectory/);
 	}
 	chomp $home;
 	$home =~ s/\/*$//; # cut eventually / at the end
@@ -1589,19 +1560,6 @@ sub getconfig
 __END__
 #
 # $Log: note,v $
-# Revision 1.2  2000/07/09 22:10:03  zarahg
-# tempfile management more secure now. new option TempDirectory. thx to Donald.
-#
-# Revision 1.30  2000/07/09 21:59:48  scip
-# secure temp files
-#
-# Revision 1.29  2000/06/25 20:13:23  scip
-# *** empty log message ***
-#
-# Revision 1.28  2000/06/25 19:51:51  scip
-# changed pattern matching of seraching(\@ ... \E)
-# added --config option
-#
 # Revision 1.27  2000/05/16 23:51:35  thomas
 # fixed many option-parsing related bugd!
 #

@@ -1,4 +1,4 @@
-README for the mysql version of note
+README for the mysql database installation for note
 
 Requirements
 ============
@@ -28,15 +28,13 @@ Installation
         database and the table structure. You might edit 
         the script before running it.
 
-        If you getting trouble, i.e. if you have not the 
+        If you are getting trouble, i.e. if you have not the 
         required permissions to do that, please make sure,
         you can. 
         As user root, you have to give your user the 
         neccessary permissions. Please refer to the mysql 
         documentation, how to do that.
         After that repeat the step above.
-
-        As root, copy the perl-script "note" to /usr/bin.
 
 	You can find a sample config file within the subdirectory
 	"config" named noterc. There are some special values

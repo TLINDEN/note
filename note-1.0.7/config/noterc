@@ -1,4 +1,4 @@
-# 1.0.8        -*- sh -*- 
+# 1.0.6        -*- sh -*- 
 # This is a sample config for the note script
 # There are useful defaults set in note itself.
 # 
@@ -68,7 +68,7 @@ UseEncryption		0
 
 # Specify the encryption protocol. The appropriate perl
 # module needs to be installed. Possible velues are
-# IDEA, DES or Blowfish, the default is IDEA.
+# IDEA, DES or BLOWFISH, the default is IDEA.
 CryptMethod		IDEA
 
 
@@ -142,16 +142,6 @@ TopicColor		BLACK
 # You need to set this Option to 1, if you decide to make use of this
 # capabily
 FormatText		1
-
-
-# You might specify your own directory for temporary files.
-# note needs to create some temp files during editing of notes.
-# You could protect this directory using the command: chmod 700 directory.
-# The default is /tmp
-TempDirectory		/home/you/tmp
-
-
-
 
 # That's all about it for now.
 # If you still have any questiosn, please feel free to contact

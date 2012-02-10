@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# $Id: note,v 1.2 2000/07/09 22:10:03 zarahg Exp $
+# $Id: note,v 1.29 2000/06/25 20:13:23 scip Exp scip $
 # 
 #
 # note - console notes management with database and encryption support.
@@ -95,7 +95,7 @@ my (
 	# 
 	# internals
 	# 
-	$TYPE, $mode, $NoteKey, $TempDir,
+	$TYPE, $mode, $NoteKey, 
 	$version, $number, $CurTopic, $CurDepth, $WantTopic,
         $sizeof, %TP, $TreeType, $ListType, $SetTitle,
         @ArgTopics, $key, $typedef, @NumBlock, $has_nothing,
@@ -126,13 +126,13 @@ $TIME_COLOR   	= "black";
 $TOPIC_COLOR 	= "BLACK";
 $TOPIC 		= 1;
 $TopicSep 	= '/';
-$version 	= "1.0.8";
+$version 	= "1.0.7";
 if($TOPIC)
 {
     $CurDepth 	= 1; # the current depth inside the topic "directory" structure...
 }
 $USE_CRYPT 	= "NO";
-$TempDir        = "/tmp";
+
 
 
 
@@ -320,6 +320,12 @@ if($DEFAULT_LIST eq "LONG")
 # *if* loading of the config was successful, try to load the
 # configured database backend. Currently supported: mysql and binary.
 push @INC, $libpath;
+#if($dbdriver eq "mysql") {
+#	eval {
+#		require NOTEDB::mysql;
+#		$db = new NOTEDB($dbdriver, $dbname, $dbhost, $dbuser, $dbpasswd, $table, $fnum, $fnote, $fdate);
+#	}
+#}
 if($dbdriver eq "binary") {
 	eval {
 		require NOTEDB::binary;
@@ -355,8 +361,12 @@ $_TOPICC  = "</$TOPIC_COLOR>";
 
 $NoteKey  = $TopicSep . "notes" . $TopicSep;
 
-# default permissions on new files (tmp)
-umask 077;
+
+if($ListType ne "LONG" && $mode ne "interactive")
+{
+     #$maxlen += $timelen; # no time will be displayed!
+}
+
 
 # check if the user wants to use encryption:
 if($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
@@ -630,13 +640,11 @@ sub new
 	$date = &getdate;
 	if($ALWAYS_EDIT eq "YES")
 	{
-		$TEMP = &gettemp;
+		$TEMP = "/tmp/note.$$";
 		# let the user edit it...
 	    	$editor = &find_editor;
         	if($editor)
         	{
-		        system "touch", $TEMP && die $!;
-			system "chattr", "+s", $TEMP; # ignore errors, since only on ext2 supported!
         	        system $editor, $TEMP;
         	}
         	else
@@ -742,12 +750,10 @@ sub edit
 		print "no note with that number found!\n\n";
 		exit(0) if($mode ne "interactive");
     	}	
-	$TEMP = &gettemp;
+	$TEMP = "/tmp/note.$USER.$$";
 	open NOTE,">$TEMP" or die "Could not open $TEMP\n";
 	select NOTE;
-	
-        system "chattr", "+s", $TEMP; # ignore errors, like in new()
-	
+
 	print $note;
 	close NOTE;
 	select STDOUT;
@@ -771,7 +777,7 @@ sub edit
 	chomp $note;
 	close NOTE;
 
-	unlink $TEMP || die $!;
+	unlink $TEMP;
 
 	if($KEEP_TIMESTAMP eq "YES")
 	{
@@ -1381,24 +1387,6 @@ sub getdate
 }
 
 
-sub gettemp
-{
-  my($random, @range);
-  @range=('0'..'9','a'..'z','A'..'Z');
-  srand(time||$$);
-  for (0..10) {
-    $random .= $range[rand(int($#range)+1)];
-  }
-  my $tempfile = $TempDir . "/" . $USER  . "." . $random;
-  if (-e $tempfile) {
-    # avoid race conditions!
-    unlink $tempfile;
-  }
-  return $tempfile;
-}
-
-
-
 sub help
 {
 my $B = "<blackI>";
@@ -1570,7 +1558,6 @@ sub getconfig
 		$TOPIC_COLOR	 = $value if (/^TopicColor/);
 		$PreferredEditor = $value if (/^PreferredEditor/);
 		$FormatText      = $value if (/^FormatText/);
-		$TempDir         = $value if (/^TempDirectory/);
 	}
 	chomp $home;
 	$home =~ s/\/*$//; # cut eventually / at the end
@@ -1589,12 +1576,6 @@ sub getconfig
 __END__
 #
 # $Log: note,v $
-# Revision 1.2  2000/07/09 22:10:03  zarahg
-# tempfile management more secure now. new option TempDirectory. thx to Donald.
-#
-# Revision 1.30  2000/07/09 21:59:48  scip
-# secure temp files
-#
 # Revision 1.29  2000/06/25 20:13:23  scip
 # *** empty log message ***
 #
