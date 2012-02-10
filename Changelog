@@ -1,5 +1,13 @@
 ==================================================================================
 
+1.0.2:
+ADDED:		Topic-Tree overview command (-t or -T).
+ADDED:		Enhanced list command in interactive mode, you can now specify
+		a topic which notes you want to see.
+CHANGED:	updated the help and usage sections to reflect the additions above.
+
+==================================================================================
+
 1.0.1:
 FIXED:		fixed bug in NOTEDB::mysql, which caused note t store NULL values
 		in db, if encryption was off. A really dump failure :-(

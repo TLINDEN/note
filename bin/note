@@ -1,7 +1,20 @@
 #!/usr/bin/perl
-# $Author: thomas $ $Id: note,v 1.15 2000/03/19 23:41:04 thomas Exp thomas $ $Revision: 1.15 $
+# $Author: thomas $ $Id: note,v 1.19 2000/04/30 16:07:23 thomas Exp thomas $ $Revision: 1.19 $
 # 
 # $Log: note,v $
+# Revision 1.19  2000/04/30 16:07:23  thomas
+# *** empty log message ***
+#
+# Revision 1.18  2000/04/30 14:58:21  thomas
+# updated the usage and help subs
+#
+# Revision 1.17  2000/04/30 14:44:38  thomas
+# added colors to the tree functions
+#
+# Revision 1.16  2000/04/30 14:28:38  thomas
+# added the t command, which displays a topic-tree.
+# and enhanced the list command in interactive mode
+#
 # Revision 1.15  2000/03/19 23:41:04  thomas
 # changed set_del, now no extra TEMP file is required!
 # instead I get it from $this->get_all() !
@@ -82,12 +95,14 @@ sub display;
 sub list;
 sub help;
 sub import;
+sub display_tree;
+sub tree;
 
 my (
-        $maxlen, $timelen, $TOPIC, $TYPE, $mode, $NOTEDB,
-        $version, $number, $CurTopic, $CurDepth, $PATH, $CONF,
+        $maxlen, $timelen, $TOPIC, $TYPE, $mode, $NOTEDB, $NoteKey, 
+        $version, $number, $CurTopic, $CurDepth, $PATH, $CONF, $WantTopic,
         $sizeof, $MAX_TIME, $PreferredEditor, %TP, $TopicSep,
-        $ListType, $searchstring, $dump_file, $ALWAYS_INT, $KEEP_TIMESTAMP,
+        $TreeType, $ListType, $searchstring, $dump_file, $ALWAYS_INT, $KEEP_TIMESTAMP,
         $BORDERC, $BORDER_COLOR, $_BORDERC, $NOTEC, $NOTE_COLOR,
         $NUMC, $NUM_COLOR, $_NUMC, $_NOTEC, $TIMEC, $TIME_COLOR,
         $_TIMEC, $TOPICC, $TOPIC_COLOR, $_TOPICC, $SetTitle, $COLOR,
@@ -121,7 +136,7 @@ $TIME_COLOR   = "black";
 $TOPIC_COLOR = "BLACK";
 $TOPIC = 1;
 $TopicSep = '/';
-$version = "1.0.1";
+$version = "1.0.2";
 if($TOPIC)
 {
     $CurDepth = 1; # the current depth inside the topic "directory" structure...
@@ -155,6 +170,17 @@ else
 		$mode = "interactive";
 		$ARGV[0] = "";
 	}
+	elsif($ARGV[0] eq "-t" || $ARGV[0] eq "--tree")
+	{
+		$mode = "tree";
+		$ARGV[0] = "";
+	}
+        elsif($ARGV[0] eq "-T" || $ARGV[0] eq "--longtree")
+        {
+                $mode = "tree";
+		$TreeType = "LONG";
+                $ARGV[0] = "";
+        }
         elsif($ARGV[0] eq "-l" || $ARGV[0] eq "--list")
         {
                 $mode = "list";
@@ -300,6 +326,7 @@ $_TIMEC   = "</$TIME_COLOR>";
 $TOPICC   = "<$TOPIC_COLOR>";
 $_TOPICC  = "</$TOPIC_COLOR>";
 
+$NoteKey  = $TopicSep . "notes" . $TopicSep;
 
 
 if($ListType ne "LONG" && $mode ne "interactive")
@@ -334,7 +361,7 @@ if($USE_CRYPT eq "YES" && $NOTEDB::crypt_supported == 1) {
 	my ($note, $date) = $db->get_single(1);	
 	if($date ne "") {
 		if($date !~ /^\d+\.\d+?/) {
-			print "access denied.\n";
+			print "access denied.\n"; # decrypted $date is not a number!
 			exit(1);
 		}
 	} #else empty!
@@ -356,6 +383,10 @@ elsif($mode eq "search")
 elsif($mode eq "list")
 {
 	&list;
+}
+elsif($mode eq "tree")
+{
+        &display_tree;
 }
 elsif($mode eq "new")
 {
@@ -789,13 +820,16 @@ sub interactive
 	# create menu:
 	$B = "<blackI>";
 	$BB = "</blackI>";
-	$menu = 	"[" .  $B . "L" . $BB . " List "
-			. $B . "N" . $BB . " New "
-			. $B . "D" . $BB . " Delete "
-			. $B . "S" . $BB . " Search "
-			. $B . "E" . $BB . " Edit "
-			. $B . "?" . $BB . " Help "
-			. $B . "Q" . $BB . " Quit] "; # $CurTopic will be empty if $TOPIC is off!
+	$menu = 	"[" .  $B . "L" . $BB . " List ";
+	if($TOPIC) {
+		$menu .= $B . "T" . $BB . " Topics ";
+	}
+	$menu	.= $B . "N" . $BB . " New "
+		. $B . "D" . $BB . " Delete "
+		. $B . "S" . $BB . " Search "
+		. $B . "E" . $BB . " Edit "
+		. $B . "?" . $BB . " Help "
+		. $B . "Q" . $BB . " Quit] "; # $CurTopic will be empty if $TOPIC is off!
 	# per default let's list all the stuff:
 	# Initially do a list command!
 	$maxlen += $timelen;
@@ -906,6 +940,16 @@ sub interactive
 			print "\n\ngood bye\n";
 			exit(0);
 		}
+		elsif($char =~ /^t$/)
+		{
+			&display_tree;
+		}
+		elsif($char =~ /^T$/)
+		{
+			$TreeType = "LONG";
+			&display_tree;
+			$TreeType = "";
+		}
                 elsif($char =~ /^\.\.$/ || $char =~ /^cd\s*\.\.$/)
                 {
 			$CurDepth-- if ($CurDepth > 1);
@@ -914,6 +958,30 @@ sub interactive
                         print "\n";
                         &list;
                         undef $SetTitle;
+                }
+		elsif($char =~ /^l\s+(\w+)$/)
+                {
+                        # list
+			$WantTopic = $1;
+			if(exists $TP{$WantTopic}) 
+			{
+				my %SaveTP = %TP;
+				$LastTopic[$CurDepth] = $CurTopic;
+				$CurTopic = $1;
+				$CurDepth++;
+                        	print "\n";
+                        	$ListType = "";
+                        	$maxlen += $timelen;
+                        	&list;
+                        	undef $SetTitle;
+				$CurTopic = $LastTopic[$CurDepth];
+				$CurDepth--;
+				%TP = %SaveTP;
+			}
+			else
+                        {
+                                print "\nunknown command!\n";
+                        }
                 }
 		else
 		{
@@ -954,6 +1022,8 @@ Options:
 	-l	--list [<topic>]	lists all existing notes If no topic were specified,
 					it will display a list of all existing topics.
 	-L	--longlist [<topic>]	the same as -l but prints also the timestamp
+	-t	--topic			prints a list of all topics as a tree.
+	-T	--longtopc		prints the topic-tree with the notes under each topic
 	-s	--search <string>	searches for <string> trough the notes database
 	-e	--edit <number>		edit note with <number>
 	-d	--delete <number>	delete note with <number>
@@ -1233,6 +1303,8 @@ HELP for interactive note       $version
 The following commands are available:
 L/l     List notes. L=long, with timestamp and l=short without timestamp.
         You can also just hit <enter> for short list.
+	If you specify a subtopic, then list will display it's contents, i.e.
+	"l mytopic" will dislpay notes under mytopic.
 N       Create a new note.
 D       Delete a note. You can either hit "d 1" or "d 1-4" or just hit "d".
         If you don't specify a number, you will be asked for.
@@ -1243,12 +1315,18 @@ E       Edit a note. Usage is similar to Delete but you can only edit note
 if($TOPIC)
 {
 print qq~
-T       print a list of all existing topics. You can change the actual
-        topic by simply typing it's name. You can create a new topic by
-        creating a new note, the first line must be the topic borderd by
-        backslashes, i.e.: "\\newtopic\\". If you type just ".." instead
-        of a topic, you will go to the "default" topic, which contains
-        all notes without a topic.~;
+T/t     print a list of all existing topics as a tree. T prints the tree with 
+	all notes under each topic.
+	=====>
+	  You can change the actual topic by simply typing it's name or by
+	  using the command "cd", i.e. "cd mytopic".
+          You can create a new topic by creating a new note, the first line
+          must be the topic borderd by slashes, i.e. "/newtopic/". The slash
+	  is the default topic-sepearator, but you can override thie in the
+	  config!
+          If you type just ".." instead of a topic, you will go one step back
+	  in your topic-structure.
+	=====>~;
 }
 print qq~
 ?/H     This help screen.
@@ -1257,4 +1335,70 @@ Q       Exit the program.
 All commands except the List command are case insensitive.
 ---------------------------------------------------------------
 ~;
+}
+
+
+sub display_tree {
+	# displays a tree of all topics
+	my(%TREE, %res, $n, $t, $num, @nodes, $firstline, $text, $untext);
+        %res = $db->get_all();
+        foreach $num (keys %res)
+        {
+                $n = $res{$num}->{'note'};
+                $t = $res{$num}->{'date'};
+                # this allows us to have multiple topics (subtopics!)
+                my ($firstline,$text,$untext) = split /\n/, $n, 3;
+                if($firstline =~ /^($TopicSep)/)
+                {
+			$firstline =~ s/($TopicSep)*$//; #remove TopicSepatator
+                	@nodes = split(/$TopicSep/,$firstline);
+                }
+                else
+                {
+                	@nodes = ();("$TopicSep");
+			$text = $firstline;
+                }
+	    	&tree($text, \%TREE, @nodes);
+	}
+
+	# now that we have build our tree (in %TREE) go on t display it:
+	print C $BORDERC . "\n[" . $TopicSep . $BORDERC . "]\n";
+	&print_tree(\%{$TREE{''}},"");
+	print C $BORDERC . $_BORDERC . "\n";
+}
+
+
+sub tree {
+    my($text, $LocalTree, $node, @nodes) = @_;
+    if(@nodes) {
+	if(! exists $LocalTree->{$node}->{$NoteKey}) {
+	    $LocalTree->{$node}->{$NoteKey} = [];
+	}
+	&tree($text, $LocalTree->{$node}, @nodes);
+    }
+    else {
+	push @{$LocalTree->{$node}->{$NoteKey}}, $text;
+    }
+}
+
+
+sub print_tree {
+  # thanks to Jens for his hints and this sub!
+  my $hashref=shift;
+  my $prefix=shift;
+  my @notes=@{$hashref->{$NoteKey}};
+  my @subnotes=sort grep { ! /^$NoteKey$/ } keys %$hashref;
+  if($TreeType eq "LONG") {
+  	for my $note (@notes) {
+	  if($note ne "") {
+  	    print C $BORDERC ;# . $prefix. "|\n";
+  	    print C "$prefix+---<" . $NOTEC . $note . $BORDERC . ">" . $_NOTEC . "\n";
+	  }
+  	}
+  }
+  for my $index (0..$#subnotes) {
+    print C $BORDERC . $prefix. "|\n";
+    print C "$prefix+---[" . $TOPICC . $subnotes[$index] . $BORDERC . "]\n";
+    &print_tree($hashref->{$subnotes[$index]},($index == $#subnotes?"$prefix    ":"$prefix|   "));
+  }
 }

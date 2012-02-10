@@ -1,4 +1,4 @@
-note 1.0.1 by Thomas Linden, 18/04/2000
+note 1.0.2 by Thomas Linden, 01/05/2000
 
 
 Introduction
@@ -102,6 +102,13 @@ Usage
 	If you want to get a listing of all
 	If you want to see the timestamps, use "-L" instead of "-l". 
 	Read more about topics below in the section "Topics".
+	You can also specify the topic which notes you want to see:
+	"-l mytopic" does the trick.
+	Additional, you might want to get an overview of your topic-
+	strcture. You can use the command "-t" in this case, which
+	will display a tree-view of your tpic-structure. You can
+	use the command "-T" if you want to see the notes under each
+	topic too.
 
 	To edit a certain note, type "note -e 1". It will invoke your
 	editor (vi or pico). You can edit it, after saving, note
