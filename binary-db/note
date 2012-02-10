@@ -61,7 +61,7 @@ sub import;
 
 use IO::Seekable;
 
-$version = "0.4.1 (binary database)";
+$version = "0.4.2 (binary database)";
 
 
 # process command line args
@@ -374,8 +374,9 @@ sub new
         	}
     		# read it in ($note)
     		$note = "";
-    		open E, "<$TEMP" or die "Could not open $TEMP\n";
-    		$c = 0;
+    		#open E, "<$TEMP" or die "Could not open $TEMP\n";
+    		open E, "<$TEMP" or print "...edit process interupted! No note has been saved.\n"; return;
+		$c = 0;
     		while(<E>)
     		{
     		    $note = $note . $_;
@@ -652,12 +653,18 @@ sub interactive
 			. $B . "E" . $BB . " Edit "
 			. $B . "?" . $BB . " Help "
 			. $B . "Q" . $BB . " Quit ] command> ";
+	# Initially do a list command!
+	$maxlen += $timelen;
+	&list;
 	# per default let's list all the stuff:
 	for(;;)
 	{
 		#&list;
+		# reset time
+		$time = `date +%d\".\"%m\".\"%Y\" \"%T`;
+		chomp $time;
+		$ListType = "";
 		$maxlen = $maxlen_save;
-		print "\n\n\n";
 		print C $menu;
 		# endless until user press "Q" or "q"!
 		$char = <STDIN>;

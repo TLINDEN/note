@@ -1,3 +1,12 @@
+0.4.2:
+ADDED:		If run in interactive mode, note will at first do a list command.
+FIXED:		A bug caused note to save bogus timestamps after editing a note.
+CHANGED:	It does no more print 3 newlines before the menu in interactive mode.
+FIXED:		Some more vars will be resetted during each loop in interactive mode.
+		$ListType.
+
+
+
 0.4.1:
 ADDED:		The install.sh script for the mysql version is no able to install the
 		required Mysql module directly from CPAN, thanks to David A. Bandel!

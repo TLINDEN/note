@@ -75,7 +75,7 @@ sub list;
 sub help;
 sub import;
 
-$version = "0.4.1 (mysql database)";
+$version = "0.4.2 (mysql database)";
 
 # process command line args
 if($ARGV[0] eq "")
@@ -368,7 +368,8 @@ sub new
         	}
     		# read it in ($note)
     		$note = "";
-    		open E, "<$TEMP" or die "Could not open $TEMP\n";
+    		#open E, "<$TEMP" or die "Could not open $TEMP\n";
+		open E, "<$TEMP" or print "...edit process interupted! No note has been saved.\n"; return;
     		$c = 0;
     		while(<E>)
     		{
@@ -595,11 +596,16 @@ sub interactive
 			. $B . "?" . $BB . " Help "
 			. $B . "Q" . $BB . " Quit ] command> ";
 	# per default let's list all the stuff:
+	# Initially do a list command!
+	$maxlen += $timelen;
+	&list;
 	for(;;)
 	{
 		#&list;
+		$time = `date +%d\".\"%m\".\"%Y\" \"%T`;
+		chomp $time;
+		$ListType = "";
 		$maxlen = $maxlen_save;
-		print "\n\n\n";
 		print C $menu;
 		# endless until user press "Q" or "q"!
 		$char = <STDIN>;
