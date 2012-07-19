@@ -4,7 +4,7 @@
 
 package NOTEDB::general;
 
-$NOTEDB::general::VERSION = "1.02";
+$NOTEDB::general::VERSION = "1.03";
 
 use strict;
 #use Data::Dumper;
@@ -136,12 +136,15 @@ sub get_nextnum {
 	foreach (keys %{$this->{cache}}) {
 	    $num++;
 	}
-	return $num;
+        return $num;
     }
 
     my %data = $this->get_all();
-    my $size = scalar keys %data;
-    $num = $size + 1;
+    my @numbers = sort { $a <=> $b } keys %data;
+    $num = pop @numbers;
+    $num++; 
+    return $num;
+
     return $num;
 }
 

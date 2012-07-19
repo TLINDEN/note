@@ -124,10 +124,6 @@ sub get_nextnum {
       my @numbers = sort { $a <=> $b } keys %{$this->{cache}};
       $num = pop @numbers;
       $num++;
-      #$num = 1;
-      #foreach (keys %{$this->{cache}}) {
-      #    $num++;
-      #}
       return $num;
     }
 
@@ -135,8 +131,6 @@ sub get_nextnum {
     my @numbers = sort { $a <=> $b } keys %data;
     $num = pop @numbers;
     $num++;
-    #my $size = scalar keys %data;
-    #$num = $size + 1;
     return $num;
 }
 
