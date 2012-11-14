@@ -1,3 +1,9 @@
+1.3.14:
+ADDED:		new config parameter 'motd', a note entry which will be shown
+		on startup (if exists).
+CHANGED:	the prompt will now show if the current instance is running
+		in readonly mode.
+================================================================================
 1.3.12:
 FIXED:		NOTEDB::general data backend module did overwrite records if
 		there were some deleted ones in the database.
