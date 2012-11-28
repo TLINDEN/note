@@ -3,7 +3,7 @@
 
 package NOTEDB::pwsafe3;
 
-$NOTEDB::pwsafe3::VERSION = "1.01";
+$NOTEDB::pwsafe3::VERSION = "1.02";
 
 use strict;
 use Data::Dumper;
@@ -310,9 +310,6 @@ sub _retrieve {
   my $file = $this->{dbname};
   if (-s $file) {
     if ($this->filechanged() || $this->{unread}) {
-      my $fh = new FileHandle "<$this->{dbname}" or die "could not open $this->{dbname}\n";
-      flock $fh, LOCK_EX;
-
       my %data;
       if (! $key) {
 	$key   = $this->_getpass();
@@ -340,9 +337,6 @@ sub _retrieve {
 	print "Exception caught:\n$@\n";
 	exit 1;
       }
-
-      flock $fh, LOCK_UN;
-      $fh->close();
 
       $this->{unread} = 0;
       $this->{data}   = \%data;

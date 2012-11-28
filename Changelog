@@ -1,4 +1,8 @@
 1.3.14:
+		fixed bug in NOTEDB::pwsafe3 backend, it used lockging on the
+		database file for reading, which is wrong.
+================================================================================
+1.3.13:
 ADDED:		new config parameter 'motd', a note entry which will be shown
 		on startup (if exists).
 CHANGED:	the prompt will now show if the current instance is running
