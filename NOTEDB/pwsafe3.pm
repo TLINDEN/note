@@ -3,7 +3,7 @@
 
 package NOTEDB::pwsafe3;
 
-$NOTEDB::pwsafe3::VERSION = "1.02";
+$NOTEDB::pwsafe3::VERSION = "1.03";
 
 use strict;
 use Data::Dumper;
@@ -355,7 +355,8 @@ sub _pwsafe3tonote {
   #
   # convert pwsafe3 record to note record
   my ($this, $record) = @_;
-  my $date = scalar localtime($record->{lastmod});
+  my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($record->{lastmod});
+  my $date = sprintf("%02d.%02d.%04d %02d:%02d:%02d", $mday, $mon+1, $year+1900, $hour, $min, $sec);
   chomp $date;
   my $note;
   if ($record->{group}) {
