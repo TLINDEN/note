@@ -144,7 +144,7 @@ $CONF 		= File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
 $TOPIC 		= 1;
-$version 	= "1.3.15";
+$version 	= "1.3.16";
 $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 $maxlen         = "auto";
 $timelen        = 22;
@@ -467,9 +467,10 @@ else {
   $db->no_crypt;
 
   # does: NOTEDB::crypt_supported = 0;
-  my ($cnote, $cdate) = $db->get_single(1);
-  if ($cdate ne "") {
-    if ($cdate !~ /^\d+\.\d+?/) {
+  my %all = $db->get_all();
+  if(scalar keys %all > 0) {
+    my $id = (keys %all)[0];
+    if($all{$id}->{date} !~ /^\d+\.\d+?/) {
       print "notedb seems to be encrypted!\n";
       exit(1);
     }
