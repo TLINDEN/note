@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 # note - console notes management with database and encryption support.
-# Copyright (C) 1999-2012 Thomas Linden   (see README for details!)
+# Copyright (C) 1999-2013 Thomas Linden   (see README for details!)
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -144,7 +144,7 @@ $CONF 		= File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
 $TOPIC 		= 1;
-$version 	= "1.3.16";
+$version 	= "1.3.17";
 $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 $maxlen         = "auto";
 $timelen        = 22;
@@ -583,6 +583,7 @@ sub search {
 
       %res = $db->get_search($searchstring);
       my $nummatches = scalar keys %res;
+      &determine_width;
       foreach $num (sort { $a <=> $b } keys %res) {
 	if ($nummatches == 1) {
 	  output($num, $res{$num}->{'note'}, $res{$num}->{'date'}, "SINGLE");
@@ -1306,6 +1307,79 @@ It comes with absolutely NO WARRANTY. It is distributed under the
 terms of the GNU General Public License. Use it at your own risk :-)
 
 Usage: 	note [ options ] [ number [,number...]]
+
+Options:
+
+       -c, --config file
+           Use another config file than the default \$HOME/.noterc.
+
+       -l, --list [topic]
+           Lists all existing notes. If no topic were specified, it will
+           display a list of all existing topics.  See the section TOPICS for
+           details about topics.
+
+       -L, --longlist [topic]
+           The same as -l but prints also the timestamp of the notes.
+
+       -t, --topic
+           Prints a list of all topics as a tree.
+
+       -T, --longtopic
+           Prints the topic-tree with the notes under each topic.
+
+       -s, --search string
+           Searches for <string> trough the notes database. See the section
+           SEARCHING for details about the search engine.
+
+       -e, --edit number
+           Edit the note with the number <number> using your default editor or
+           the one you specified in the config file.
+
+       -d, --delete number
+           Delete the note with the number <number>. You can delete multiple
+           notes with one command. "1-4" deletes the notes 1,2,3,4. And
+           "1,5,7" deletes the specified ones.
+
+       -D, --Dump [file | -]
+           Dumps all notes to the textfile <file>. If <file> is a "-" it will
+           be printed out to standard output (STDOUT).
+
+       -I, --Import file | -
+           Imports a previously dumped textfile into the note database. Data
+           will be appended by default.  You can also specify a dash note -I -
+           instead of a <file>, which causes note, silently to read in a dump
+           from STDIN.
+
+       -o, --overwrite
+           Only suitable for use with --Import. Overwrites an existing notedb.
+           Use with care.
+
+       -r, --raw
+           Raw mode, output will not be formatted. Works not in interactive
+           mode, only on cmd-line for list and display. That means, no colors
+           will be used and no lines or titles.
+
+       -i, --interactive
+           Start note in interactive mode. See the section INTERACTIVE MODE
+           for details on this mode.
+
+       --encrypt cleartext
+           Encrypt the given clear text string. You would need that if you
+           want to store the mysql password not in cleartext in the config(if
+           you are using the mysql backend!).
+
+       -h, --help
+           Display this help screen.
+
+       -v, --version
+           Display the version number.
+
+       -   If you run note just with one dash: note -, then it will read in a
+           new note from STDIN until EOF. This makes it possible to pipe text
+           into a new note, i.e.:
+
+            cat sometextfile | note -
+
 Read the note(1) manpage for more details.
 ~;
     exit 1;

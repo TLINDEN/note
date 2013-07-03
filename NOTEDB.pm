@@ -2,7 +2,7 @@
 # this is a generic module, used by note database
 # backend modules.
 #
-# Copyright (c) 2000-2012 Thomas Linden <tom@daemon.de>
+# Copyright (c) 2000-2013 Thomas Linden <tom@daemon.de>
 
 
 package NOTEDB;
@@ -10,7 +10,7 @@ package NOTEDB;
 use Exporter ();
 use vars qw(@ISA @EXPORT $crypt_supported);
 
-$NOTEDB::VERSION = "1.37";
+$NOTEDB::VERSION = "1.38";
 
 BEGIN {
     # make sure, it works, otherwise encryption
