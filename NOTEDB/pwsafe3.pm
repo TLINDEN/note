@@ -3,8 +3,8 @@
 
 package NOTEDB::pwsafe3;
 
-$NOTEDB::pwsafe3::VERSION = "1.03";
-
+$NOTEDB::pwsafe3::VERSION = "1.04";
+use lib qw(/home/scip/D/github/Crypt--PWSafe3/blib/lib);
 use strict;
 use Data::Dumper;
 use Time::Local;
@@ -51,14 +51,19 @@ sub version {
 
 sub get_stat {
   my ($this) = @_;
-  my $mtime = (stat($this->{dbname}))[9];
-  return $mtime;
+  if(-e $this->{dbname}) {
+    return (stat($this->{dbname}))[9];
+  }
+  else {
+    return time;
+  }
 }
 
 sub filechanged {
   my ($this) = @_;
   my $current = $this->get_stat();
-  if ($current > $this->{mtime}) {
+
+  if ($current >= $this->{mtime}) {
     $this->{mtime} = $current;
     return $current;
   }
@@ -77,7 +82,7 @@ sub set_del_all {
 
 sub get_single {
     my($this, $num) = @_;
-    my($address, $note, $date, $buffer, $n, $t, $buffer, );
+    my($address, $note, $date, $n, $t, $buffer, );
 
     my %data = $this->get_all();
 
@@ -329,6 +334,7 @@ sub _retrieve {
 		       notes  => $record->notes,
 		       group  => $record->group,
 		       lastmod=> $record->lastmod,
+		       ctime  => $record->ctime,
 		       );
 	  $data{$num}->{note} = \%entry;
 	}
@@ -355,7 +361,7 @@ sub _pwsafe3tonote {
   #
   # convert pwsafe3 record to note record
   my ($this, $record) = @_;
-  my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($record->{lastmod});
+  my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime($record->{ctime});
   my $date = sprintf("%02d.%02d.%04d %02d:%02d:%02d", $mday, $mon+1, $year+1900, $hour, $min, $sec);
   chomp $date;
   my $note;
@@ -406,6 +412,9 @@ sub _notetopwsafe3 {
     ($title, $content) = split /\n/, $text, 2;
   }
 
+  if(!defined $content) { $content = ""; }
+  if(!defined $group) { $group = ""; }
+
   $user = $passwd = '';
   if ($content =~ /(user|username|login|account|benutzer):\s*(.+)/i) {
     $user = $2;
@@ -414,9 +423,10 @@ sub _notetopwsafe3 {
     $passwd = $2;
   }
 
-  #               1       2       3      5      6      7
-  if ($date =~ /^(\d\d)\.(\d\d)\.(\{4}) (\d\d):(\d\d):(\d\d)$/) {
-    $ts = timelocal($7, $6, $5, $1, $2-1, $3-1900);
+  #               1       2       3       4      5      6      
+  if ($date =~ /^(\d\d)\.(\d\d)\.(\d{4}) (\d\d):(\d\d):(\d\d)$/) {
+    # timelocal($sec,$min,$hour,$mday,$mon,$year);            
+    $ts = timelocal($6, $5, $4, $1, $2-1, $3-1900);
   }
 
   # make our topics pwsafe3 compatible groups
@@ -426,17 +436,16 @@ sub _notetopwsafe3 {
 
   # pwsafe3 uses windows newlines, so convert ours
   $content =~ s/\n/\r\n/gs;
-
   my %record = (
 		uuid   => $this->_getuuid($num),
 		user   => $user,
 		passwd => $passwd,
 		group  => $group,
 		title  => $title,
+		ctime  => $ts,
 		lastmod=> $ts,
 		notes  => $content,
 		);
-
   return %record;
 }
 

@@ -4,7 +4,7 @@
 
 package NOTEDB::general;
 
-$NOTEDB::general::VERSION = "1.03";
+$NOTEDB::general::VERSION = "1.04";
 
 use strict;
 #use Data::Dumper;
@@ -44,6 +44,7 @@ sub new {
 
     $self->{mtime}    = $self->get_stat();
     $self->{unread}   = 1;
+    $self->{changed}  = 1;
     $self->{data}     = {};
     $self->{LOCKFILE} = $param{dbname} . "~LOCK";
 
@@ -88,7 +89,7 @@ sub set_del_all {
 
 sub get_single {
     my($this, $num) = @_;
-    my($address, $note, $date, $buffer, $n, $t, $buffer, );
+    my($address, $note, $date, $n, $t, $buffer, );
 
     my %data = $this->get_all();
 
@@ -143,7 +144,6 @@ sub get_nextnum {
     my @numbers = sort { $a <=> $b } keys %data;
     $num = pop @numbers;
     $num++; 
-    return $num;
 
     return $num;
 }
@@ -267,6 +267,7 @@ sub uen {
 	$crypted = $raw;
     }
     my $coded = encode_base64($crypted);
+    chomp $coded;
     return $coded;
 }
 
@@ -310,7 +311,7 @@ sub _retrieve {
   my ($this) = @_;
   my $file = $this->{dbname};
   if (-s $file) {
-    if ($this->changed() || $this->{unread}) {
+    if ($this->{changed} || $this->{unread}) {
       my $fh = new FileHandle "<$this->{dbname}" or die "could not open $this->{dbname}\n";
       flock $fh, LOCK_EX;
 

@@ -6,7 +6,7 @@
 
 package NOTEDB::dbm;
 
-$NOTEDB::dbm::VERSION = "1.40";
+$NOTEDB::dbm::VERSION = "1.41";
 
 use DB_File;
 use NOTEDB;
@@ -29,7 +29,7 @@ sub new
 
     my $notefile = "note.dbm";
     my $timefile = "date.dbm";
-    my $dbm_dir  = $param{directory} || File::Spec->catfile($ENV{HOME}, ".note_dbm");
+    my $dbm_dir = $self->{dbname} = $param{dbname} || File::Spec->catfile($ENV{HOME}, ".note_dbm");
 
     if (! -d $dbm_dir) {
       # try to make it

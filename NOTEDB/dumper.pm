@@ -4,7 +4,7 @@
 
 package NOTEDB::dumper;
 
-$NOTEDB::dumper::VERSION = "1.01";
+$NOTEDB::dumper::VERSION = "1.02";
 
 use strict;
 use Data::Dumper;
@@ -29,7 +29,7 @@ sub new {
     my $self = {};
     bless($self,$class);
 
-    $self->{NOTEDB}  = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb");
+    $self->{NOTEDB} = $self->{dbname} = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb");
 
     if(! -e $param{dbname}) {
 	open(TT,">$param{dbname}") or die "Could not create $param{dbname}: $!\n";
@@ -76,7 +76,7 @@ sub set_del_all {
 
 sub get_single {
     my($this, $num) = @_;
-    my($address, $note, $date, $buffer, $n, $t, $buffer, );
+    my($address, $note, $date, $n, $t, $buffer, );
 
     my %data = $this->get_all();
     return ($data{$num}->{note}, $data{$num}->{date});

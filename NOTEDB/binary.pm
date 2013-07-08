@@ -5,7 +5,7 @@
 #
 package NOTEDB::binary;
 
-$NOTEDB::binary::VERSION = "1.10";
+$NOTEDB::binary::VERSION = "1.11";
 
 use strict;
 use IO::Seekable;
@@ -28,7 +28,7 @@ sub new {
     my $self = {};
     bless($self,$class);
 
-    $self->{NOTEDB}  = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb");
+    $self->{NOTEDB}  = $self->{dbname} = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb");
     my $MAX_NOTE     = $param{max_note} || 4096;
     my $MAX_TIME     = $param{max_time} || 64;
 
@@ -384,17 +384,22 @@ sub _retrieve {
   my $file = $this->{dbname};
   if (-s $file) {
     if ($this->changed() || $this->{unread}) {
-      my $fh = new FileHandle "<$this->{dbname}" or die "could not open $this->{dbname}\n";
-      flock $fh, LOCK_EX;
+      open NOTE, "+<$this->{NOTEDB}" or die "could not open $this->{NOTEDB}\n";
+      flock NOTE, LOCK_EX;
+      my($buffer, $t, $n, %res);
+      seek(NOTE, 0, 0); # START FROM BEGINNING
+      while(read(NOTE, $buffer, $this->{sizeof})) {
+          my ($num, $note, $date) = unpack($this->{typedef}, $buffer);
+          $t = $this->ude($date);
+          $n = $this->ude($note);
+          $res{$num}->{'note'} = $n;
+          $res{$num}->{'date'} = $t;
+      }
+      flock NOTE, LOCK_UN;
+      close NOTE;
 
-      my %data = ParseConfig(-ConfigFile => $fh) or die "could not read to database: $!\n";
-
-      flock $fh, LOCK_UN;
-      $fh->close();
-
-      $this->{unread} = 0;
-      $this->{data}   = \%data;
-      return %data;
+      $this->cache(%res);
+      return %res;
     }
     else {
       return %{$this->{data}};
@@ -405,6 +410,10 @@ sub _retrieve {
   }
 }
 
+sub _store {
+  # compatibility dummy
+  return 1;
+}
 
 1; # keep this!
 
