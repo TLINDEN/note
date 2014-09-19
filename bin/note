@@ -144,7 +144,7 @@ $CONF 		= File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
 $TOPIC 		= 1;
-$version 	= "1.3.18";
+$version 	= "1.3.19";
 $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 $maxlen         = "auto";
 $timelen        = 22;
@@ -409,7 +409,7 @@ if ($conf{useencryption} && $NOTEDB::crypt_supported == 1) {
     $conf{cryptmethod} = "Crypt::IDEA";
   }
   if (!exists $ENV{'NOTE_PASSWD'}) {
-    print "password: ";
+    print "note password: ";
     eval {
       local($|) = 1;
       local(*TTY);

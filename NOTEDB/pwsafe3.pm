@@ -3,7 +3,7 @@
 
 package NOTEDB::pwsafe3;
 
-$NOTEDB::pwsafe3::VERSION = "1.04";
+$NOTEDB::pwsafe3::VERSION = "1.05";
 use lib qw(/home/scip/D/github/Crypt--PWSafe3/blib/lib);
 use strict;
 use Data::Dumper;
@@ -35,6 +35,7 @@ sub new {
     $self->{unread}   = 1;
     $self->{data}     = {};
     $self->{LOCKFILE} = $param{dbname} . "~LOCK";
+    $self->{keepkey} = 0;
 
     return $self;
 }
@@ -63,7 +64,7 @@ sub filechanged {
   my ($this) = @_;
   my $current = $this->get_stat();
 
-  if ($current >= $this->{mtime}) {
+  if ($current > $this->{mtime}) {
     $this->{mtime} = $current;
     return $current;
   }
@@ -93,7 +94,6 @@ sub get_single {
 sub get_all {
     my $this = shift;
     my($num, $note, $date, %res);
-
     if ($this->unchanged) {
 	return %{$this->{cache}};
     }
@@ -496,12 +496,13 @@ sub _getpass {
   # to fetch data from the actual file OR want to write
   # to it. To minimize reads, we use caching by default.
   my($this) = @_;
+
   if ($this->{key}) {
     return $this->{key};
   }
   else {
     my $key;
-    print "password: ";
+    print "pwsafe password: ";
     eval {
       local($|) = 1;
       local(*TTY);

@@ -120,13 +120,16 @@ sub wrdb3 {
   $n = $db->get_nextnum; 
   $db->set_new($n, $ex3->{2}->{note}, $ex3->{2}->{date});
   $ex3->{$n} = delete $ex3->{2};
- 
+
+  # hack db file mtime, since we're too fast here
+  $db->{mtime} = 0;
+
   my %all = $db->get_all();
   # hack %all to that it passes the next test
   foreach my $n (keys %all) {
     chomp $all{$n}->{note};
   }
- 
+
   is_deeply($ex3, \%all, "$name: Get all notes hash") or diag(Dumper(\%all));
 }
 
