@@ -3,7 +3,7 @@
 
 package NOTEDB::pwsafe3;
 
-$NOTEDB::pwsafe3::VERSION = "1.05";
+$NOTEDB::pwsafe3::VERSION = "1.06";
 use lib qw(/home/scip/D/github/Crypt--PWSafe3/blib/lib);
 use strict;
 use Data::Dumper;
@@ -324,7 +324,7 @@ sub _retrieve {
 
 	my @records = $vault->getrecords();
 
-	foreach my $record (@records) {
+	foreach my $record (sort { $a->uuid cmp $b->uuid } @records) {
 	  my $num = $this->_uuid( $record->uuid );
 	  my %entry = (
 		       uuid   => $record->uuid,
@@ -502,7 +502,7 @@ sub _getpass {
   }
   else {
     my $key;
-    print "pwsafe password: ";
+    print STDERR "pwsafe password: ";
     eval {
       local($|) = 1;
       local(*TTY);
