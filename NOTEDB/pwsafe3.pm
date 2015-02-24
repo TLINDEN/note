@@ -3,8 +3,7 @@
 
 package NOTEDB::pwsafe3;
 
-$NOTEDB::pwsafe3::VERSION = "1.06";
-use lib qw(/home/scip/D/github/Crypt--PWSafe3/blib/lib);
+$NOTEDB::pwsafe3::VERSION = "1.07";
 use strict;
 use Data::Dumper;
 use Time::Local;
@@ -324,7 +323,7 @@ sub _retrieve {
 
 	my @records = $vault->getrecords();
 
-	foreach my $record (sort { $a->uuid cmp $b->uuid } @records) {
+	foreach my $record (sort { $a->ctime <=> $b->ctime } @records) {
 	  my $num = $this->_uuid( $record->uuid );
 	  my %entry = (
 		       uuid   => $record->uuid,
@@ -450,34 +449,23 @@ sub _notetopwsafe3 {
 }
 
 sub _uuid {
-  #
-  # Convert a given pwsafe3 uuid to a number
-  # and store them for recursive access
   my ($this, $uuid) = @_;
   if (exists $this->{uuidnum}->{$uuid}) {
     return $this->{uuidnum}->{$uuid};
   }
 
-  my $intuuid = $uuid;
-  $intuuid =~ s/[\-]//g;
-  $intuuid = unpack('h32', $intuuid);
-  my $cuid = $intuuid;
-  my $checksum;
-  while () {
-    $checksum = unpack("%16C*", $cuid) - 1600;
-    while ($checksum < 0) {
-      $checksum++; # avoid negative numbers
-    }
-    if (! exists  $this->{numuuid}->{$checksum}) {
-      $this->{uuidnum}->{$uuid}     = $checksum;
-      $this->{numuuid}->{$checksum} = $uuid;
-      last;
-    }
-    else {
-      $cuid .= $.;
-    }
+  my $max = 0;
+
+  if (exists $this->{numuuid}) {
+    $max = (sort { $b <=> $a } keys %{$this->{numuuid}})[0];
   }
-  return $checksum;
+
+  my $num = $max + 1;
+
+  $this->{uuidnum}->{$uuid} = $num;
+  $this->{numuuid}->{$num}  = $uuid;
+
+  return $num;
 }
 
 sub _getuuid {
