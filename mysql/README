@@ -60,3 +60,15 @@ Installation
 
 
         This should be all.
+
+Manual Installation
+===================
+
+	1) create a mysql database
+		mysqladmin create $db
+
+	2) add the required GRANT to a user and database
+		echo "GRANT ALL PRIVILEGES ON $db TO $user@localhost IDENTIFIED BY '$password'" | mysql mysql
+
+	3) create the schema: 
+		mysql $db < sql
