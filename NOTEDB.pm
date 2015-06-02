@@ -10,7 +10,7 @@ package NOTEDB;
 use Exporter ();
 use vars qw(@ISA @EXPORT $crypt_supported);
 
-$NOTEDB::VERSION = "1.42";
+$NOTEDB::VERSION = "1.43";
 
 BEGIN {
     # make sure, it works, otherwise encryption
