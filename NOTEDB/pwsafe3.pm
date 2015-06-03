@@ -3,7 +3,7 @@
 
 package NOTEDB::pwsafe3;
 
-$NOTEDB::pwsafe3::VERSION = "1.07";
+$NOTEDB::pwsafe3::VERSION = "1.08";
 use strict;
 use Data::Dumper;
 use Time::Local;
@@ -281,29 +281,50 @@ sub _store {
     flock $fh, LOCK_EX;
   }
 
-  my $key   = $this->_getpass();
-  eval {
-    my $vault = new Crypt::PWSafe3(password => $key, file => $this->{dbname});
-    if ($create) {
-      my $rec = new Crypt::PWSafe3::Record();
-      $rec->uuid($record->{uuid});
-      $vault->addrecord($rec);
-      $vault->modifyrecord($record->{uuid}, %{$record});
+  my $key;
+  my $prompt = "pwsafe password: ";
+
+  foreach my $try (1..5) {
+    if($try > 1) {
+      $prompt = "pwsafe password ($try retry): ";
+    }
+    $key   = $this->_getpass($prompt);
+    eval {
+      my $vault = new Crypt::PWSafe3(password => $key, file => $this->{dbname});
+      if ($create) {
+        my $rec = new Crypt::PWSafe3::Record();
+        $rec->uuid($record->{uuid});
+        $vault->addrecord($rec);
+        $vault->modifyrecord($record->{uuid}, %{$record});
+      }
+      else {
+        $vault->modifyrecord($record->{uuid}, %{$record});
+      }
+      $vault->save();
+    };
+    if ($@) {
+      if($@ =~ /wrong pass/i) {
+        $key = '';
+        next;
+      }
+      else {
+        print "Exception caught:\n$@\n";
+        exit 1;
+      }
     }
     else {
-      $vault->modifyrecord($record->{uuid}, %{$record});
+      last;
     }
-    $vault->save();
-  };
-  if ($@) {
-    print "Exception caught:\n$@\n";
-    exit 1;
   }
-
   eval {
     flock $fh, LOCK_UN;
     $fh->close();
   };
+
+  if(!$key) {
+    print STDERR "Giving up after 5 failed password attempts.\n";
+    exit 1;
+  }
 
   # finally re-read the db, so that we always have the latest data
   $this->_retrieve($key);
@@ -483,14 +504,14 @@ sub _getpass {
   # Instead we ask for the password everytime we want
   # to fetch data from the actual file OR want to write
   # to it. To minimize reads, we use caching by default.
-  my($this) = @_;
+  my($this, $prompt) = @_;
 
   if ($this->{key}) {
     return $this->{key};
   }
   else {
     my $key;
-    print STDERR "pwsafe password: ";
+    print STDERR $prompt ? $prompt : "pwsafe password: ";
     eval {
       local($|) = 1;
       local(*TTY);
