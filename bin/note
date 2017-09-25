@@ -97,7 +97,7 @@ my (
     # internals
     #
     $TYPE, $mode, $NoteKey, %Color, @LastTopic, $timelen, $maxlen,
-    $version, $CurTopic, $CurDepth, $WantTopic, $db,
+    $VERSION, $CurTopic, $CurDepth, $WantTopic, $db,
     $sizeof, %TP, $TreeType, $ListType, $SetTitle, $clearstring,
     @ArgTopics, $key, $typedef, @NumBlock, $has_nothing, @completion_topics, @completion_notes,
     @randomlist, $hardparams
@@ -144,7 +144,7 @@ $CONF 		= File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER 		= getlogin || getpwuid($<);
 chomp $USER;
 $TOPIC 		= 1;
-$version 	= "1.3.24";
+$VERSION 	= "1.3.24";
 $CurDepth 	= 1;		# the current depth inside the topic "directory" structure...
 $maxlen         = "auto";
 $timelen        = 22;
@@ -296,7 +296,7 @@ else {
     }
   }
   elsif ($opt_v) {
-    print "This is note $version by Thomas Linden <tom at linden dot at>.\n";
+    print "This is note $VERSION by Thomas Linden <tom at linden dot at>.\n";
     exit(0);
   }
   elsif ($opt_h) {
@@ -485,7 +485,7 @@ if ($conf{cache}) {
 
 
 # add the backend version to the note version:
-$version .= ", " . $conf{dbdriver} . " " . $db->version();
+$VERSION .= ", " . $conf{dbdriver} . " " . $db->version();
 
 
 # main loop: ###############
@@ -1302,7 +1302,7 @@ sub interactive {
 
 sub usage
   {
-    print qq~This is the program note $version by Thomas Linden (c) 1999-2009.
+    print qq~This is the program note $VERSION by Thomas Linden (c) 1999-2009.
 It comes with absolutely NO WARRANTY. It is distributed under the
 terms of the GNU General Public License. Use it at your own risk :-)
 
@@ -1442,7 +1442,7 @@ sub output {
       $R = $BORDERC . "]" . $_BORDERC;
     }
     $PathLen = length($PATH);	# will be ZERO, if not in TOPIC mode!
-    $VersionLen = length($version) + 7;
+    $VersionLen = length($VERSION) + 7;
 
     if ($TYPE ne "SINGLE") {
       if (!$SetTitle) {
@@ -1460,10 +1460,10 @@ sub output {
 	    print $LONGSPC if ($conf{printlines});
 	  }
 	  if ($TOPIC) {
-	    print C $TOPICC . "$PATH    $_TOPICC$SP" . " note $version $R\n";
+	    print C $TOPICC . "$PATH    $_TOPICC$SP" . " note $VERSION $R\n";
 	  }
 	  else {
-	    print C $NOTEC . "note$_NOTEC$SP" . " note $version $R\n";
+	    print C $NOTEC . "note$_NOTEC$SP" . " note $VERSION $R\n";
 	  }
 	  print C $LINE if ($conf{printlines});
 	}
@@ -1669,7 +1669,7 @@ sub help {
 
     print C qq~$BORDERC
 ----------------------------------------------------------------------$_BORDERC $TOPICC
-HELP for interactive note       $version
+HELP for interactive note       $VERSION
 $_TOPICC $NOTEC
 The following commands are available:
 $L       List notes. L=long, with timestamp and l=short without timestamp.
