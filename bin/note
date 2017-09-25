@@ -1671,23 +1671,23 @@ HELP for interactive note       $VERSION
 $_TOPICC $NOTEC
 The following commands are available:
 $L       List notes. L=long, with timestamp and l=short without timestamp.
-         You can also just hit <enter> for short list.
-         If you specify a subtopic, then list will display it's contents, 
-         i.e.: "l mytopic" will dislpay notes under mytopic.
+        You can also just hit <enter> for short list.
+        If you specify a subtopic, then list will display it's contents, 
+        i.e.: "l mytopic" will dislpay notes under mytopic.
 $N       Create a new note.
 $D       Delete a note. You can either hit "d 1" or "d 1-4" or just hit "d".
-         If you don't specify a number, you will be asked for.
+        If you don't specify a number, you will be asked for.
 $S       Search trough the notes database. Usage is similar to Delete, use
-         a string instead of a number to search for.
+        a string instead of a number to search for.
 $E       Edit a note. Usage is similar to Delete but you can only edit note
-         a time.
+        a time.
 $C       Change note config online. Use with care!
 $H       This help screen.
 $Q       Exit the program.~;
     if ($TOPIC) {
       print C qq~
 $T       print a list of all existing topics as a tree. T prints the tree
-         with all notes under each topic.~;
+        with all notes under each topic.~;
     }
     print C qq~
 
