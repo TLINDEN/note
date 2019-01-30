@@ -1,5 +1,5 @@
 #!/bin/sh
-# installer for note 0.8 >
+# installer for note 1.3.26 >
 
 # $Id: install.sh,v 1.1 2000/03/19 03:33:28 thomas Exp thomas $
 
@@ -44,6 +44,10 @@ echo "Installing note ..."
 
 cp -ri ${NOTEDB} ${LIBDIR} || die "Could not copy modules!"
 
+rm ${LIBDIR}/NOTEDB/README
+mkdir /usr/share/doc/NOTEDB
+cp -i ${NOTEDB}/README /usr/share/doc/NOTEDB
+
 cp -i "${BIN}/note" ${BINDIR} || die "Could not copy note script!"
 
 chmod 755 ${BINDIR}/note
@@ -53,4 +57,4 @@ chmod 644 ${LIBDIR}/NOTEDB/*
 echo "done. Please copy ${SRC}/config/noterc to ~/.noterc"
 echo "and edit it if you like. "
 echo
-echo "Thanks for using note 0.8!"
+echo "Thanks for using note 1.3.26!"
