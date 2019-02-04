@@ -14,7 +14,7 @@ note [options] [ number [,number...]]
 
 B<note> is a small console program written in perl, which allows 
 you to manage notes similar to programs like "knotes" but from 
-the commandline. Note can use different database-backends for 
+the command line. Note can use different database-backends for
 notes-storage. It ships with a DBI-based mysql-module(which 
 can also be used for other by DBI supported DBMS), another 
 module, which uses a binary file for storage and a DBM module.
@@ -108,7 +108,7 @@ for details on this mode.
 =item I<--encrypt cleartext>
 
 Encrypt the given clear text string. You would need that if you want to
-store the mysql password not in cleartext in the config(if you are using
+store the mysql password not in cleartext in the config (if you are using
 the mysql backend!).
 
 
@@ -140,7 +140,7 @@ note from STDIN until EOF. This makes it possible to pipe text into a new note, 
 =head2 GENERAL USAGE
 
 If you don't know, how to run note, try "note -h" first.
-It will tell you all available commandline options.
+It will tell you all available command line options.
 
 To create a new note, simply run "note". You can enter
 the note (the length is by default limited to 4096 bytes,
@@ -288,7 +288,7 @@ topic.  You will get strange results without it!
 
 =head2 INTERACTIVE MODE
 
-If you start note with the commandline flag B<-i>, then it starts
+If you start note with the command line flag B<-i>, then it starts
 with an interactive interface.
 It will start with a listing under the default top-topic ("/").
 You can enter the name of a topic to change to that topic. This works
@@ -507,7 +507,7 @@ You can use a configuration file with note but it is not required.
 Note will use default values if there is no config.
 
 The default config file is B<~/.noterc>. You may specify another
-one with the commandline flag I<--config>.
+one with the command line flag I<--config>.
 
 Comments start with #, empty lines will be ignored.
 

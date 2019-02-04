@@ -337,7 +337,7 @@ You can use this module for accessing a note database. This backend uses
 a text file for storage and Storable for accessing the file.
 
 Currently, NOTEDB module is only used by note itself. But feel free to use it
-within your own project! Perhaps someone want to implement a webinterface to
+within your own project! Perhaps someone want to implement a web interface to
 note...
 
 =head1 USAGE

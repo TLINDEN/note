@@ -481,7 +481,7 @@ However, both versions provides identical interfaces, which means, you do
 not need to change your code, if you want to switch to another database format.
 
 Currently, NOTEDB module is only used by note itself. But feel free to use it
-within your own project! Perhaps someone want to implement a webinterface to
+within your own project! Perhaps someone want to implement a web interface to
 note...
 
 =head1 USAGE
