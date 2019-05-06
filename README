@@ -1,4 +1,4 @@
-note 1.3.20 by T.v.Dein (09/02/2015)
+note 1.3.26 by T.v.Dein (09/02/2015)
 =======================================
 
 Introduction
@@ -6,13 +6,13 @@ Introduction
 
 This is a small console program written in
 perl, which allows you to manage notes similar
-to programs like "knotes" from commandline.
+to programs like "knotes" from command line.
 
-There are currently three different database backends,
+There are currently three different databases backends,
 which you can use with note:
 	o NOTEDB::binary - this is the default backend
 	  and uses a binary file to store your notes.
-	o NOTEDB::mysql  - this backend uses a mysql
+	o NOTEDB::mysql - this backend uses a mysql
 	  database to store your notes. You can switch
 	  easily to another DBMS since this module uses
 	  the Perl standard module "DBI" for database-
@@ -36,26 +36,24 @@ Where to get?
 =============
 
 By now you can download it at http://www.daemon.de/NOTE.
-If you are using debian, you can apt-get it. If you are
-using gentoo, you can emerge it.
+If you are using debian, you run `can apt-get ìnstall note`.
+If you are using gentoo, you can emerge it.
 
 You may also try your nearest tucows or freshmeat mirror.
-
-
 
 
 Features
 ========
 
 o Several different database backends, mysql(DBI), dbm,
-  binary(bin file), general and text (text files).
-o Commandline interface using the standard perl module
+  binary (bin file), general and text (text files).
+o Command line interface using the standard perl module
   Getopt::Long, which allows you to use short or long
   command-line options.
-o Interactive interface(pure ascii), the following functions
+o Interactive interface (pure ascii), the following functions
   are available in interactive mode: list, display, topic,
   delete, edit, help.
-o Highly confiurable using a perlish configfile ~/.noterc.
+o Highly configurable using a perlish configfile ~/.noterc.
   although it is configurable it is not required, note can
   run without a configfile using useful default presets.
 o Colourized output is supported using ASCII Escape-Sequences.
@@ -64,31 +62,29 @@ o Data can be stored in various different database backends,
   since all database access is excluded from the program itself
   in perl modules.
 o Notes can be deleted, edited and you can search trough your notes.
-o Notes can be categorized. Each category(topic) can contain multiple
+o Notes can be categorized. Each category (topic) can contain multiple
   notes and even more sup-topics. There is no limitation about
   sub topics.
 o You can view all notes in a list and it is possible only to view
   notes under a certain topic.
 o There is a tree-view, which allows you to get an overview of your
   topic-hierarchy.
-o Notes can be encrypted using DES or IDEA algorythms and Crypt::CBC.
+o Notes can be encrypted using DES or IDEA algoroithms and Crypt::CBC.
 o You can dump the contents of your note database into a plain text
   file, which can later be imported. Imports can be appended or it can
-  overwrite an existing database (-o).
+  overwrite an existing database (`-o`).
 o Note has scripting capabilities, you can create a new note by piping
   another commands output to note, you can also import a notedump from
   stdin as well es duming to stdout instead a file. Additional, there 
-  is an option --raw available, which prints everything out completely
+  is an option `--raw` available, which prints everything out completely
   without formatting.
 o for better performance, note can cache the database for listings
   or searching.
 o It can be installed without root-privileges.
-o if Term::ReadLine (and Term::ReadLine::Gnu) is installed, history
+o If Term::ReadLine (and Term::ReadLine::Gnu) is installed, history
   and auto-completion are supported in interactive mode.
 o Last, a while ago a user stated: "... it simply does, what it
   says ..."
-
-
 
 
 
@@ -98,12 +94,12 @@ Requirements
 You need the following things:
 	o perl installed (5.004x)
 	o The module IO::Seekable and Fcntl, which should be 
-	  already installed with your perl distributuion if
+	  already installed with your perl distribuion if
 	  you want to use the binary database backend.
 	o DBI module and DBI::mysql if you want to use the 
 	  mysql database backend.
 	o The module DB_FILE if you want to use the DBM module.
-	o Getopt::Long (part of perl std ditribution)
+	o Getopt::Long (part of perl std distribution)
 	o Term::ReadLine and optionally Term::ReadLine::Gnu if
 	  you want to use the auto-completion and history functionality.
 	o Config::General if you want to use the NOTEDB::general
@@ -118,7 +114,7 @@ Unpack the tar-ball and issue the following command:
    $ perl Makefile.PL
 
 This creates the Makefile neccessary for installing.
-You may add some additional variables to the commandline, the
+You may add some additional variables to the command line, the
 most important one is PREFIX.
 
 Then enter the following command to prepare the installation
@@ -144,23 +140,21 @@ Crypt:CBC and Crypt::Blowfish (or Crypt::DES or whatever).
 Configuration
 =============
 
-This version of note doesn't neccessarily need
+This version of note doesn't necessarily need
 a configuration file. But you can have one and change
 some default values. Take a look to the file config/noterc
 provided with this tarball. There are detailed instructions
 about every available parameter.
 Simply copy this file into your home-directory and name it
-.noterc
+`.noterc`
 If you decide not to use the default database backend (a binary
 file), you will *need* a configuration!
-
 
 
 Usage
 =====
 
 Refer to the note(1) manpage for usage instructions.
-
 
 
 Comments
@@ -181,13 +175,12 @@ You can read the complete GPL at: http://www.gnu.org/copyleft/gpl.html
 
 
 
-Recources
+Resources
 =========
 
 The command-line options and all commands of the interactive mode are
 described in the supplied note(1) manpage.
 You may also refer to the note website http://www.daemon.de/note/.
-
 
 
 Author and Copyright
