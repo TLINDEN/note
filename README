@@ -69,7 +69,7 @@ o You can view all notes in a list and it is possible only to view
   notes under a certain topic.
 o There is a tree-view, which allows you to get an overview of your
   topic-hierarchy.
-o Notes can be encrypted using DES or IDEA algoroithms and Crypt::CBC.
+o Notes can be encrypted using DES or IDEA algorithms and Crypt::CBC.
 o You can dump the contents of your note database into a plain text
   file, which can later be imported. Imports can be appended or it can
   overwrite an existing database (`-o`).
