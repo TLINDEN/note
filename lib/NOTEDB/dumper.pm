@@ -329,7 +329,7 @@ NOTEDB::text - module lib for accessing a notedb from perl
 
 	# get all existing notes
 	%all_notes = $db->get_all();
-	# format of returnes hash like the one from get_search above
+	# format of returns hash like the one from get_search above
 
 	# get the next noteid available
 	$next_num = $db->get_nextnum();
@@ -356,7 +356,7 @@ You can use this module for accessing a note database. This backend uses
 a text file for storage and Storable for accessing the file.
 
 Currently, NOTEDB module is only used by note itself. But feel free to use it
-within your own project! Perhaps someone want to implement a webinterface to
+within your own project! Perhaps someone want to implement a web interface to
 note...
 
 =head1 USAGE
