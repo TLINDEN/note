@@ -5,7 +5,15 @@ no strict "refs";
 
 use IO::All;
 use Encode;
-use YAML::XS qw(Load Dump);
+# only  YAML::XS  is able  to  properly  load  our data  (others  fail
+# invariably)
+use YAML::XS qw(Load);
+# only  YAML is  able to  properly  Dump the  data YAML::XS  generates
+# various kinds of multiline  entries like "line\nline2\nline3" end up
+# literally  in the  generated  yaml,  which note  is  then unable  to
+# feed. So,  the pure perl  version is  better as it  always generates
+# multiline entries for data containing newlines
+use YAML qw(Dump);
 use Data::Dumper;
 
 my ($yf1, $yf2) = @ARGV;
@@ -26,6 +34,8 @@ my $hash2 = &hashify($y2);
 
 # diff and recombine the two into a new one
 my $combinedhash = &hash2note(&diff($hash1, $hash2));
+
+#print Dumper($combinedhash); exit;
 
 # turn into yaml
 my $combindedyaml = Dump($combinedhash);
