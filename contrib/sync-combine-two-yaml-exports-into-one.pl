@@ -15,8 +15,10 @@ use YAML::XS qw(Load);
 # multiline entries for data containing newlines
 use YAML qw(Dump);
 use Data::Dumper;
+use Term::ANSIColor;
 
-my ($yf1, $yf2) = @ARGV;
+my ($yf1, $yf2, $outfile) = @ARGV;
+
 
 # read  both input  files  and  parse yaml  into  data structure,  fix
 # non-printables
@@ -44,9 +46,12 @@ my $combindedyaml = Dump($combinedhash);
 # them here to make note happy
 $combindedyaml =~ s/^'(\d+)':/$1:/gm;
 
+# done
+my $out = io $outfile;
+$combindedyaml > $out;
 
-print $combindedyaml;
 
+print "\nDone. Wrote combined hashes to $outfile\n";
 
 sub hash2note {
     # convert given hash into note format with number as key
@@ -72,35 +77,79 @@ sub diff {
     foreach my $path (sort keys %{$hash1}) {
         if (exists $hash2->{$path}) {
             if ($hash2->{$path}->{body} eq $hash1->{$path}->{body}) {
-                printf STDERR "%s => %s is duplicate\n", $path, $hash1->{$path}->{title};
+                #printf STDERR "%s => %s is duplicate\n", $path, $hash1->{$path}->{title};
                 $new->{$path} = delete $hash2->{$path};
                 delete $hash1->{$path};
             }
             else {
                 printf STDERR "%s => %s is different\n", $path, $hash1->{$path}->{title};
-                $new->{$path} = delete $hash1->{$path};
-                $new->{$path . 2} = delete $hash2->{$path};
+                my $which = &askdiff($hash1->{$path}->{body}, $hash2->{$path}->{body}, $hash1->{$path}->{title});
+
+                if ($which eq 'l') {
+                    # use left
+                    $new->{$path} = delete $hash1->{$path};
+                    delete $hash2->{$path};
+                }
+                elsif ($which eq 'r') {
+                    # use right
+                    $new->{$path} = delete $hash2->{$path};
+                    delete $hash1->{$path};
+                }
+                else {
+                    # both
+                    $new->{$path} = delete $hash1->{$path};
+                    $new->{$path . 2} = delete $hash2->{$path};
+                }
             }
         }
         else {
-            printf STDERR "%s => %s is missing in hash2\n", $path, $hash1->{$path}->{title};
+            #printf STDERR "%s => %s is missing in hash2\n", $path, $hash1->{$path}->{title};
             $new->{$path} = delete $hash1->{$path};
         }
     }
 
     # store any lefovers of hash1
     foreach my $path (sort keys %{$hash1}) {
-        printf STDERR "%s => %s is left in hash1\n", $path, $hash1->{$path}->{title};
+        #printf STDERR "%s => %s is left in hash1\n", $path, $hash1->{$path}->{title};
         $new->{$path} = $hash1->{$path};
     }
 
     # store any lefovers of hash2
     foreach my $path (sort keys %{$hash2}) {
-        printf STDERR "%s => %s is left in hash2\n", $path, $hash2->{$path}->{title};
+        #printf STDERR "%s => %s is left in hash2\n", $path, $hash2->{$path}->{title};
         $new->{$path} = $hash2->{$path};
     }
 
     return $new
+}
+
+sub askdiff {
+    my ($left, $right, $title) = @_;
+    $left > io("/tmp/$$-body-left");
+    $right > io("/tmp/$$-body-right");
+    my $diff = `diff --side-by-side /tmp/$$-body-left /tmp/$$-body-right`;
+
+    print color ('bold');
+    print "\n\nEntry $title exists in both hashes but differ. Diff:\n";
+    print color ('reset');
+    
+    print "$diff\n";
+    
+    print color ('bold');
+    print "keep [l]eft, keep [r]ight, keep [b]oth? ";
+    print color ('reset');
+    
+    my $answer = <STDIN>;
+    chomp $answer;
+
+    system("rm -f /tmp/$$-body-left /tmp/$$-body-right");
+    
+    if ($answer !~ /^[blr]$/) {
+        print "Wrong answer $answer, using [b]oth!\n";
+        return 'b';
+    }
+
+    return $answer;
 }
 
 sub hashify {
