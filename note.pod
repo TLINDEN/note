@@ -77,6 +77,10 @@ the specified ones.
 Dumps all notes to the textfile <file>. If <file> is a "-" it will 
 be printed out to standard output (STDOUT).
 
+=item I<-j --json>
+
+Use JSON format for exports created using -D. The importer determines
+the format to be used automatically.
 
 =item I<-I, --Import file | ->
 
@@ -534,6 +538,6 @@ T.v.Dein <tlinden@cpan.org>
 
 =head1 VERSION
 
-1.3.26
+1.4.0
 
 =cut

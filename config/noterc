@@ -284,6 +284,12 @@ motd =
 
 
   #
+  # Enable JSON formatted backups. The option will be removed
+  # in version 1.5 and become the only available option.
+  # In earlier versions: if unset or set to NO, YAML will be used.
+UseJSON = YES
+
+  #
   #
   # That's all about it for now.
   # If you still have any questiosn, please feel free to contact
