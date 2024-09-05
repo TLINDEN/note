@@ -12,14 +12,15 @@ note [options] [ number [,number...]]
 
 =head1 DESCRIPTION
 
-B<note> is a small console program written in perl, which allows 
-you to manage notes similar to programs like "knotes" but from 
-the command line. Note can use different database-backends for
-notes-storage. It ships with a DBI-based mysql-module(which 
-can also be used for other by DBI supported DBMS), another 
-module, which uses a binary file for storage and a DBM module.
-There are also two modules available which uses a text file.
-Note supports since version 1.0.0 encryption(IDEA or DES)!
+B<note> is a  small console program written in perl,  which allows you
+to manage notes similar to programs like "knotes" but from the command
+line. Note  can use different database-backends  for notes-storage. It
+ships with a  DBI-based mysql-module(which can also be  used for other
+by DBI supported  DBMS), another module, which uses a  binary file for
+storage and a DBM module.  There  are also two modules available which
+uses a text  file.  Note supports since  version 1.0.0 encryption(IDEA
+or DES)! And  last but not least the PWSafe3  format is also supported
+by the pwsafe3 backend, which is encrypted by default.
 
 
 =head1 OPTIONS

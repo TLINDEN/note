@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #
 # note - console notes management with database and encryption support.
-# Copyright (C) 1999-2023 T.v.Dein   (see README for details!)
+# Copyright (C) 1999-2024 T.v.Dein   (see README for details!)
 #
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -17,10 +17,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
 #
-#                               - Thomas Linden <tom at linden dot at>
+#                               - Thomas von Dein <tom at vondein dot org>
 #
 # latest version on:
 # http://www.daemon.de/note/
+# https://github.com/TLINDEN/note/
 #
 
 use lib qw(blib/lib);
@@ -123,7 +124,7 @@ my (
      'autoclear'         => 0,
      'maxlen'            => 'auto',
      'defaultlong'       => 0,
-     'dbdriver'          => 'binary',
+     'dbdriver'          => 'binary', # will be depcrecated in 1.5.0 and replaced by dumper.
      'timeformat'        => 'DD.MM.YYYY hh:mm:ss',
      'usecolors'         => 0,
      'addticket'         => 0,
@@ -144,7 +145,7 @@ $hardparams = "(readonly|maxlen|dbdriver|useencryption|cryptmethod)";
 $CONF       = File::Spec->catfile($ENV{HOME}, ".noterc");
 $USER       = getlogin || getpwuid($<); chomp $USER;
 $TOPIC      = 1;
-$VERSION    = "1.4.0";
+$VERSION    = "1.4.1";
 $CurDepth   = 1;        # the current depth inside the topic "directory" structure...
 $maxlen     = "auto";
 $timelen    = 22;
@@ -476,7 +477,7 @@ else {
   if(scalar keys %all > 0) {
     my $id = (keys %all)[0];
     if($all{$id}->{date} !~ /^\d+\.\d+?/) {
-      print "notedb seems to be encrypted!\n";
+      print "Warning! Encryption is not enabled, but notedb seems to be encrypted or in a non-text binary format. Please check your db file and your config!\n";
       exit(1);
     }
   }
