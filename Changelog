@@ -1,4 +1,20 @@
 -*-text-*-
+1.4.1:
+Fixed https://github.com/TLINDEN/note/issues/11:
+
+Every  backend now  uses a  different default  file extension  and the
+default config file has it configured the same way.
+
+The  error  message   about  an  encrypted  file   when  expecting  an
+unencrypted one  has been  adjusted to be  more understandable  by new
+users.
+
+Documentation updates.
+
+Deprecation Warning: binary  and text backend support  will be removed
+in the upcoming version 1.5.0.
+
+
 
 1.4.0:
 Added support for JSON encoded export files instead of YAML.
