@@ -4,7 +4,7 @@
 
 package NOTEDB::general;
 
-$NOTEDB::general::VERSION = "1.04";
+$NOTEDB::general::VERSION = "1.05";
 
 use strict;
 #use Data::Dumper;
@@ -31,7 +31,7 @@ sub new {
     my $self = {};
     bless($self,$class);
 
-    $self->{dbname}  = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb");
+    $self->{dbname}  = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb.txt");
 
     if(! -e $param{dbname}) {
 	open(TT,">$param{dbname}") or die "Could not create $param{dbname}: $!\n";

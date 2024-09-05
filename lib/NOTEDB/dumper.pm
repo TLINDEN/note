@@ -4,7 +4,7 @@
 
 package NOTEDB::dumper;
 
-$NOTEDB::dumper::VERSION = "1.02";
+$NOTEDB::dumper::VERSION = "1.03";
 
 use strict;
 use Data::Dumper;
@@ -29,7 +29,7 @@ sub new {
     my $self = {};
     bless($self,$class);
 
-    $self->{NOTEDB} = $self->{dbname} = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb");
+    $self->{NOTEDB} = $self->{dbname} = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb.dumper");
 
     if(! -e $param{dbname}) {
 	open(TT,">$param{dbname}") or die "Could not create $param{dbname}: $!\n";

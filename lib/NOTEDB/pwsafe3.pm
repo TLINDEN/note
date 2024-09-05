@@ -3,7 +3,7 @@
 
 package NOTEDB::pwsafe3;
 
-$NOTEDB::pwsafe3::VERSION = "1.08";
+$NOTEDB::pwsafe3::VERSION = "1.09";
 use strict;
 use Data::Dumper;
 use Time::Local;
@@ -28,7 +28,7 @@ sub new {
     my $self = {};
     bless($self,$class);
 
-    $self->{dbname}  = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb");
+    $self->{dbname}  = $param{dbname}   || File::Spec->catfile($ENV{HOME}, ".notedb.psafe3");
 
     $self->{mtime}    = $self->get_stat();
     $self->{unread}   = 1;

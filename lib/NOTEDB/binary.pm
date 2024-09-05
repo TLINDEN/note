@@ -5,7 +5,7 @@
 #
 package NOTEDB::binary;
 
-$NOTEDB::binary::VERSION = "1.12";
+$NOTEDB::binary::VERSION = "1.13";
 
 use strict;
 use IO::Seekable;
