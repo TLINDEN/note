@@ -1,6 +1,6 @@
 # note - a perl script for maintaining notes.
 
-This is the perl script 'note' in version 1.4.1 from 05/09/2024.
+This is the perl script 'note' in version 1.4.2 from 24/09/2024.
 
 ## Introduction
 
