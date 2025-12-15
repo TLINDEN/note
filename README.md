@@ -1,5 +1,8 @@
 # note - a perl script for maintaining notes.
 
+> [!CAUTION]
+> This software is now being maintained on [Codeberg](https://codeberg.org/scip/note/).
+
 This is the perl script 'note' in version 1.4.2 from 24/09/2024.
 
 ## Introduction
