@@ -19,7 +19,7 @@ Reorganized a little code.
 
 
 1.4.1:
-Fixed https://github.com/TLINDEN/note/issues/11:
+Fixed https://codeberg.org/scip/note/issues/11:
 
 Every  backend now  uses a  different default  file extension  and the
 default config file has it configured the same way.
@@ -40,7 +40,7 @@ Added support for JSON encoded export files instead of YAML.
 Currently this is just an option, which can be set in the config
 with UseJSON or commandline -j. The old export format is now
 being considered deprecated (a warning will be shown) and will
-be removed in 1.5. Fixes https://github.com/TLINDEN/note/issues/10.
+be removed in 1.5. Fixes https://codeberg.org/scip/note/issues/10.
 
 A helper script has been added to help to combine two notedb's
 into one: contrib/sync-combine-two-yaml-exports-into-one.pl. It is

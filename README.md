@@ -41,7 +41,7 @@ with note:
 ## Where to 
 
 You can download the source at http://www.daemon.de/NOTE or
-https://github.com/tlinden/note.
+https://codeberg.org/scip/note.
 
 If you are using debian, you run `can apt-get ìnstall note`.
 
@@ -174,7 +174,7 @@ that's the best way for me to forget to do something.
 
 In order to report a bug,  unexpected behavior, feature requests or to
 submit    a    patch,    please    open   an    issue    on    github:
-https://github.com/TLINDEN/note/issues. 
+https://codeberg.org/scip/note/issues. 
 
 ## Deprecation notes
 

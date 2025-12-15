@@ -21,7 +21,7 @@
 #
 # latest version on:
 # http://www.daemon.de/note/
-# https://github.com/TLINDEN/note/
+# https://codeberg.org/scip/note/
 #
 
 use lib qw(blib/lib);
